@@ -10,14 +10,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, ArrowUpDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { OrderTimeline } from "@/components/OrderTimeline";
+import { StatusWorkflow } from "@/components/StatusWorkflow";
 
 const Orders = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any>(null);
   const [sortField, setSortField] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     so_number: "",
     customer_id: "",
@@ -182,6 +186,16 @@ const Orders = () => {
     !formData.customer_id || q.customer_id === formData.customer_id
   );
 
+  const toggleRowExpansion = (orderId: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(orderId)) {
+      newExpandedRows.delete(orderId);
+    } else {
+      newExpandedRows.add(orderId);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading orders...</div>;
   }
@@ -336,6 +350,7 @@ const Orders = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]"></TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("so_number")}>
                   <div className="flex items-center">
                     Order #
@@ -363,32 +378,100 @@ const Orders = () => {
             </TableHeader>
             <TableBody>
               {orders?.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.so_number}</TableCell>
-                  <TableCell>{order.customers?.name || "-"}</TableCell>
-                  <TableCell>{order.quotations?.quotation_number || "-"}</TableCell>
-                  <TableCell>{formatCurrency(order.total_amount)}</TableCell>
-                  <TableCell>{getStatusBadge(order.status)}</TableCell>
-                  <TableCell>
-                    {order.order_date
-                      ? new Date(order.order_date).toLocaleDateString()
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    {order.delivery_date
-                      ? new Date(order.delivery_date).toLocaleDateString()
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(order)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                <Collapsible key={order.id} open={expandedRows.has(order.id)} onOpenChange={() => toggleRowExpansion(order.id)}>
+                  <TableRow className="border-b-0">
+                    <TableCell>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          {expandedRows.has(order.id) ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </CollapsibleTrigger>
+                    </TableCell>
+                    <TableCell className="font-medium">{order.so_number}</TableCell>
+                    <TableCell>{order.customers?.name || "-"}</TableCell>
+                    <TableCell>{order.quotations?.quotation_number || "-"}</TableCell>
+                    <TableCell>{formatCurrency(order.total_amount)}</TableCell>
+                    <TableCell>{getStatusBadge(order.status)}</TableCell>
+                    <TableCell>
+                      {order.order_date
+                        ? new Date(order.order_date).toLocaleDateString()
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {order.delivery_date
+                        ? new Date(order.delivery_date).toLocaleDateString()
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(order)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                  <CollapsibleContent asChild>
+                    <TableRow>
+                      <TableCell colSpan={9} className="p-0">
+                        <div className="p-6 bg-muted/50 border-t">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-medium mb-2">Order Details</h4>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Order Number:</span>
+                                    <span className="font-medium">{order.so_number}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Customer:</span>
+                                    <span>{order.customers?.name || "-"}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Total Amount:</span>
+                                    <span className="font-medium">{formatCurrency(order.total_amount)}</span>
+                                  </div>
+                                  {order.quotations?.quotation_number && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Quotation:</span>
+                                      <span>{order.quotations.quotation_number}</span>
+                                    </div>
+                                  )}
+                                  {order.notes && (
+                                    <div className="pt-2">
+                                      <span className="text-muted-foreground">Notes:</span>
+                                      <p className="mt-1 text-sm">{order.notes}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                             <div className="space-y-6">
+                               <OrderTimeline 
+                                 status={order.status} 
+                                 orderDate={order.order_date}
+                                 deliveryDate={order.delivery_date}
+                               />
+                               <StatusWorkflow 
+                                 currentStatus={order.status}
+                                 onStatusChange={(newStatus) => {
+                                   // Here you could add a status update mutation
+                                   console.log(`Change status from ${order.status} to ${newStatus}`);
+                                 }}
+                               />
+                             </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </CollapsibleContent>
+                </Collapsible>
               ))}
             </TableBody>
           </Table>
