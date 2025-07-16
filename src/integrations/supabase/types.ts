@@ -143,6 +143,7 @@ export type Database = {
       materials: {
         Row: {
           base_price: number | null
+          batch_no: string | null
           category: string
           created_at: string
           description: string | null
@@ -160,6 +161,7 @@ export type Database = {
         }
         Insert: {
           base_price?: number | null
+          batch_no?: string | null
           category: string
           created_at?: string
           description?: string | null
@@ -177,6 +179,7 @@ export type Database = {
         }
         Update: {
           base_price?: number | null
+          batch_no?: string | null
           category?: string
           created_at?: string
           description?: string | null

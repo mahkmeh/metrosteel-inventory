@@ -28,7 +28,9 @@ const Materials = () => {
     finish: "",
     unit: "MT",
     base_price: "",
-    description: ""
+    description: "",
+    sku: "",
+    batch_no: ""
   });
 
   const { toast } = useToast();
@@ -115,7 +117,9 @@ const Materials = () => {
       finish: "",
       unit: "MT",
       base_price: "",
-      description: ""
+      description: "",
+      sku: "",
+      batch_no: ""
     });
   };
 
@@ -131,7 +135,9 @@ const Materials = () => {
       finish: material.finish || "",
       unit: material.unit,
       base_price: material.base_price?.toString() || "",
-      description: material.description || ""
+      description: material.description || "",
+      sku: material.sku || "",
+      batch_no: material.batch_no || ""
     });
     setIsDialogOpen(true);
   };
@@ -316,6 +322,35 @@ const Materials = () => {
                   placeholder="Additional details about the material..."
                   rows={3}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="sku">SKU (Stock Keeping Unit)</Label>
+                  <Input
+                    id="sku"
+                    value={formData.sku}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    placeholder="e.g., SS304-SHT-150x1219"
+                    disabled={!editingMaterial}
+                  />
+                  {!editingMaterial && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      SKU will be auto-generated based on grade and category
+                    </p>
+                  )}
+                </div>
+                {(formData.category === "Sheet" || formData.category === "Pipe") && (
+                  <div>
+                    <Label htmlFor="batch_no">Batch Number</Label>
+                    <Input
+                      id="batch_no"
+                      value={formData.batch_no}
+                      onChange={(e) => setFormData({ ...formData, batch_no: e.target.value })}
+                      placeholder="e.g., BT2024001"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2">
