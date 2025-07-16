@@ -70,16 +70,9 @@ const Materials = () => {
         return data;
       } else {
         // Create new material
-        const { data: skuData } = await supabase.rpc("generate_sku", {
-          p_grade: material.grade,
-          p_category: material.category,
-          p_thickness: material.thickness ? parseFloat(material.thickness) : null,
-          p_width: material.width ? parseFloat(material.width) : null
-        });
-
         const { data, error } = await supabase
           .from("materials")
-          .insert([{ ...material, sku: skuData }])
+          .insert([material])
           .select()
           .single();
 
@@ -332,13 +325,8 @@ const Materials = () => {
                     value={formData.sku}
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     placeholder="e.g., SS304-SHT-150x1219"
-                    disabled={!editingMaterial}
+                    required
                   />
-                  {!editingMaterial && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      SKU will be auto-generated based on grade and category
-                    </p>
-                  )}
                 </div>
                 {(formData.category === "Sheet" || formData.category === "Pipe") && (
                   <div>
