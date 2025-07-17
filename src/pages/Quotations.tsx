@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Edit, ArrowUpDown, Download, Eye, Mail, MessageCircle, MapPin, AlertTriangle, Trash2, ChevronDown, Calculator } from "lucide-react";
+import { Plus, Edit, ArrowUpDown, Download, Eye, Mail, MessageCircle, MapPin, AlertTriangle, Trash2, ChevronDown, Calculator, Search, Package, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Quotations = () => {
@@ -42,6 +42,15 @@ const Quotations = () => {
   
   const [quotationItems, setQuotationItems] = useState<any[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddData, setQuickAddData] = useState({
+    name: "",
+    category: "",
+    grade: "",
+    sku: "",
+    base_price: ""
+  });
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -84,7 +93,7 @@ const Quotations = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("materials")
-        .select("id, name, sku, base_price")
+        .select("id, name, sku, base_price, batch_no, category, grade")
         .eq("is_active", true)
         .order("name");
 
@@ -92,6 +101,13 @@ const Quotations = () => {
       return data;
     },
   });
+
+  // Filter materials based on search
+  const filteredMaterials = materials?.filter(material =>
+    material.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    material.sku.toLowerCase().includes(productSearch.toLowerCase()) ||
+    (material.batch_no && material.batch_no.toLowerCase().includes(productSearch.toLowerCase()))
+  ) || [];
 
   const createQuotationMutation = useMutation({
     mutationFn: async (quotationData: any) => {
@@ -174,8 +190,62 @@ const Quotations = () => {
       material_name: "",
       quantity: 1,
       unit_price: 0,
+      delivery_time: "ready_stock",
       notes: ""
     }]);
+  };
+
+  const createQuickMaterial = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("materials")
+        .insert([{
+          name: quickAddData.name,
+          category: quickAddData.category,
+          grade: quickAddData.grade,
+          sku: quickAddData.sku,
+          base_price: parseFloat(quickAddData.base_price) || 0
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add the new material to quotation items
+      setQuotationItems([...quotationItems, {
+        id: Date.now(),
+        material_id: data.id,
+        material_name: data.name,
+        quantity: 1,
+        unit_price: data.base_price || 0,
+        delivery_time: "ready_stock",
+        notes: ""
+      }]);
+
+      // Reset quick add form
+      setQuickAddData({
+        name: "",
+        category: "",
+        grade: "",
+        sku: "",
+        base_price: ""
+      });
+      setIsQuickAddOpen(false);
+      
+      // Refresh materials list
+      queryClient.invalidateQueries({ queryKey: ["materials-list"] });
+
+      toast({
+        title: "Success",
+        description: "Material created and added to quotation",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to create material: ${error.message}`,
+        variant: "destructive",
+      });
+    }
   };
 
   const updateQuotationItem = (index: number, field: string, value: any) => {
@@ -193,6 +263,17 @@ const Quotations = () => {
     
     setQuotationItems(updatedItems);
     setTimeout(calculateTotals, 0); // Recalculate totals after state update
+  };
+
+  const getDeliveryBadge = (deliveryTime: string) => {
+    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", text: string }> = {
+      ready_stock: { variant: "default", text: "Ready in Stock" },
+      "3_5_days": { variant: "secondary", text: "3-5 Days" },
+      "5_8_days": { variant: "outline", text: "5-8 Days" },
+      material_transit: { variant: "destructive", text: "Material in Transit" },
+    };
+    const config = variants[deliveryTime] || variants.ready_stock;
+    return <Badge variant={config.variant} className="text-xs">{config.text}</Badge>;
   };
 
   const removeQuotationItem = (index: number) => {
@@ -475,34 +556,66 @@ const Quotations = () => {
               </div>
 
               {/* Products Section */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Products & Services</Label>
-                  <Button type="button" onClick={addQuotationItem} variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-1" />Add Product
-                  </Button>
+                  <Label className="text-base font-semibold">Products</Label>
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={addQuotationItem} variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-1" />Add Product
+                    </Button>
+                    <Button type="button" onClick={() => setIsQuickAddOpen(true)} variant="outline" size="sm">
+                      <Package className="h-4 w-4 mr-1" />Quick Add
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search products by name, SKU, or batch code..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
                 
                 {quotationItems.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>No products added yet. Click "Add Product" to get started.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
+                    {/* Header Row */}
+                    <div className="grid grid-cols-12 gap-3 px-3 py-2 bg-muted/50 rounded-lg text-sm font-medium text-muted-foreground">
+                      <div className="col-span-4">Product</div>
+                      <div className="col-span-2">Qty</div>
+                      <div className="col-span-2">Rate</div>
+                      <div className="col-span-2">Total</div>
+                      <div className="col-span-1">Delivery</div>
+                      <div className="col-span-1"></div>
+                    </div>
+
                     {quotationItems.map((item, index) => (
-                      <div key={item.id} className="grid grid-cols-12 gap-2 p-3 border rounded-lg">
+                      <div key={item.id} className="grid grid-cols-12 gap-3 p-3 border rounded-lg bg-card">
                         <div className="col-span-4">
                           <Select
                             value={item.material_id}
                             onValueChange={(value) => updateQuotationItem(index, "material_id", value)}
                           >
-                            <SelectTrigger className="h-8">
-                              <SelectValue placeholder="Select material" />
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Search and select product..." />
                             </SelectTrigger>
-                            <SelectContent>
-                              {materials?.map((material) => (
+                            <SelectContent className="max-h-[200px]">
+                              {filteredMaterials.map((material) => (
                                 <SelectItem key={material.id} value={material.id}>
-                                  {material.name} ({material.sku})
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{material.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      SKU: {material.sku} {material.batch_no && ` | Batch: ${material.batch_no}`}
+                                    </span>
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -512,7 +625,7 @@ const Quotations = () => {
                           <Input
                             type="number"
                             placeholder="Qty"
-                            className="h-8"
+                            className="h-9 text-center"
                             value={item.quantity}
                             onChange={(e) => updateQuotationItem(index, "quantity", parseFloat(e.target.value) || 0)}
                           />
@@ -521,22 +634,38 @@ const Quotations = () => {
                           <Input
                             type="number"
                             placeholder="Price"
-                            className="h-8"
+                            className="h-9 text-right"
                             value={item.unit_price}
                             onChange={(e) => updateQuotationItem(index, "unit_price", parseFloat(e.target.value) || 0)}
                           />
                         </div>
                         <div className="col-span-2">
-                          <div className="h-8 flex items-center px-2 bg-muted rounded text-sm">
+                          <div className="h-9 flex items-center justify-end px-3 bg-muted/50 rounded border text-sm font-medium">
                             ₹{(item.quantity * item.unit_price).toLocaleString()}
                           </div>
                         </div>
-                        <div className="col-span-2">
+                        <div className="col-span-1">
+                          <Select
+                            value={item.delivery_time || "ready_stock"}
+                            onValueChange={(value) => updateQuotationItem(index, "delivery_time", value)}
+                          >
+                            <SelectTrigger className="h-9 w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ready_stock">Ready Stock</SelectItem>
+                              <SelectItem value="3_5_days">3-5 Days</SelectItem>
+                              <SelectItem value="5_8_days">5-8 Days</SelectItem>
+                              <SelectItem value="material_transit">In Transit</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-1 flex justify-center">
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-full"
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => removeQuotationItem(index)}
                           >
                             <Trash2 className="h-3 w-3" />
@@ -714,6 +843,105 @@ const Quotations = () => {
                 </div>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Quick Add Material Dialog */}
+        <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Quick Add Material</DialogTitle>
+              <DialogDescription>
+                Add a new material quickly and add it to your quotation
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="quick_name">Material Name *</Label>
+                  <Input
+                    id="quick_name"
+                    placeholder="e.g., Steel Plate"
+                    value={quickAddData.name}
+                    onChange={(e) => setQuickAddData({ ...quickAddData, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="quick_category">Category *</Label>
+                  <Select
+                    value={quickAddData.category}
+                    onValueChange={(value) => setQuickAddData({ ...quickAddData, category: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sheet">Sheet</SelectItem>
+                      <SelectItem value="plate">Plate</SelectItem>
+                      <SelectItem value="pipe">Pipe</SelectItem>
+                      <SelectItem value="bar">Bar</SelectItem>
+                      <SelectItem value="rod">Rod</SelectItem>
+                      <SelectItem value="angle">Angle</SelectItem>
+                      <SelectItem value="channel">Channel</SelectItem>
+                      <SelectItem value="beam">Beam</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="quick_grade">Grade *</Label>
+                  <Select
+                    value={quickAddData.grade}
+                    onValueChange={(value) => setQuickAddData({ ...quickAddData, grade: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select grade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MS">MS (Mild Steel)</SelectItem>
+                      <SelectItem value="SS304">SS304</SelectItem>
+                      <SelectItem value="SS316">SS316</SelectItem>
+                      <SelectItem value="IS2062">IS2062</SelectItem>
+                      <SelectItem value="CORTEN">Corten Steel</SelectItem>
+                      <SelectItem value="HCHC">HCHC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="quick_sku">SKU *</Label>
+                  <Input
+                    id="quick_sku"
+                    placeholder="e.g., MS-PL-10"
+                    value={quickAddData.sku}
+                    onChange={(e) => setQuickAddData({ ...quickAddData, sku: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="quick_price">Base Price (₹/unit)</Label>
+                <Input
+                  id="quick_price"
+                  type="number"
+                  placeholder="0"
+                  value={quickAddData.base_price}
+                  onChange={(e) => setQuickAddData({ ...quickAddData, base_price: e.target.value })}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsQuickAddOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={createQuickMaterial}
+                  disabled={!quickAddData.name || !quickAddData.category || !quickAddData.grade || !quickAddData.sku}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add to Quotation
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
