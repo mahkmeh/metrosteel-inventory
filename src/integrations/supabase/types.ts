@@ -322,6 +322,7 @@ export type Database = {
           company_email: string | null
           company_name: string | null
           company_phone: string | null
+          concerned_person: string | null
           created_at: string
           customer_id: string
           freight_charges: number | null
@@ -344,6 +345,7 @@ export type Database = {
           company_email?: string | null
           company_name?: string | null
           company_phone?: string | null
+          concerned_person?: string | null
           created_at?: string
           customer_id: string
           freight_charges?: number | null
@@ -366,6 +368,7 @@ export type Database = {
           company_email?: string | null
           company_name?: string | null
           company_phone?: string | null
+          concerned_person?: string | null
           created_at?: string
           customer_id?: string
           freight_charges?: number | null

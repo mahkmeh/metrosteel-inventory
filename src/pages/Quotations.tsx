@@ -27,6 +27,7 @@ const Quotations = () => {
     quotation_number: "",
     customer_id: "",
     concerned_person: "",
+    customer_need: "for_quotation",
     requirement_source: "email",
     total_amount: "",
     tax_amount: "",
@@ -144,6 +145,7 @@ const Quotations = () => {
       quotation_number: "",
       customer_id: "",
       concerned_person: "",
+      customer_need: "for_quotation",
       requirement_source: "email",
       total_amount: "",
       tax_amount: "",
@@ -160,6 +162,7 @@ const Quotations = () => {
     setShowAdvanced(false);
     setEditingQuotation(null);
     setIsDialogOpen(false);
+    setProductSearch("");
   };
 
   const calculateTotals = () => {
@@ -314,6 +317,7 @@ const Quotations = () => {
       quotation_number: quotation.quotation_number || "",
       customer_id: quotation.customer_id || "",
       concerned_person: quotation.concerned_person || "",
+      customer_need: quotation.customer_need || "for_quotation",
       requirement_source: quotation.requirement_source || "email",
       total_amount: quotation.total_amount?.toString() || "",
       tax_amount: quotation.tax_amount?.toString() || "",
@@ -477,33 +481,31 @@ const Quotations = () => {
               Add Quotation
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[1000px] max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingQuotation ? "Edit Quotation" : "Quick Quotation"}</DialogTitle>
-              <DialogDescription>
-                Fill out the essential details to generate a quotation quickly
-              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Essential Fields Section */}
-              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
+              <div className="grid grid-cols-4 gap-3 p-3 border rounded-lg bg-muted/20">
                 <div>
-                  <Label htmlFor="quotation_number">Quotation Number</Label>
+                  <Label htmlFor="quotation_number" className="text-xs">Quotation Number</Label>
                   <Input
                     id="quotation_number"
-                    placeholder="Auto-generated if empty"
+                    className="h-8 text-sm"
+                    placeholder="Auto-generated"
                     value={formData.quotation_number}
                     onChange={(e) => setFormData({ ...formData, quotation_number: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="customer_id">Customer *</Label>
+                  <Label htmlFor="customer_id" className="text-xs">Customer *</Label>
                   <Select
                     value={formData.customer_id}
                     onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
                     required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="Select customer" />
                     </SelectTrigger>
                     <SelectContent>
@@ -516,21 +518,41 @@ const Quotations = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="concerned_person">Concerned Person</Label>
+                  <Label htmlFor="concerned_person" className="text-xs">Contact Person</Label>
                   <Input
                     id="concerned_person"
-                    placeholder="Contact person name"
+                    className="h-8 text-sm"
+                    placeholder="Contact name"
                     value={formData.concerned_person}
                     onChange={(e) => setFormData({ ...formData, concerned_person: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label>Source</Label>
-                  <div className="flex gap-2 mt-1">
+                  <Label htmlFor="customer_need" className="text-xs">Customer Need</Label>
+                  <Select
+                    value={formData.customer_need}
+                    onValueChange={(value) => setFormData({ ...formData, customer_need: value })}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="immediate">Immediate</SelectItem>
+                      <SelectItem value="for_quotation">For Quotation</SelectItem>
+                      <SelectItem value="1_2_days">1-2 Days</SelectItem>
+                      <SelectItem value="sos">SOS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="col-span-4">
+                  <Label className="text-xs">Source</Label>
+                  <div className="flex gap-1 mt-1">
                     <Button
                       type="button"
                       variant={formData.requirement_source === "email" ? "default" : "outline"}
                       size="sm"
+                      className="h-7 text-xs px-2"
                       onClick={() => setFormData({ ...formData, requirement_source: "email" })}
                     >
                       <Mail className="h-3 w-3 mr-1" />Email
@@ -539,6 +561,7 @@ const Quotations = () => {
                       type="button"
                       variant={formData.requirement_source === "whatsapp" ? "default" : "outline"}
                       size="sm"
+                      className="h-7 text-xs px-2"
                       onClick={() => setFormData({ ...formData, requirement_source: "whatsapp" })}
                     >
                       <MessageCircle className="h-3 w-3 mr-1" />WhatsApp
@@ -547,6 +570,7 @@ const Quotations = () => {
                       type="button"
                       variant={formData.requirement_source === "walk_in" ? "default" : "outline"}
                       size="sm"
+                      className="h-7 text-xs px-2"
                       onClick={() => setFormData({ ...formData, requirement_source: "walk_in" })}
                     >
                       <MapPin className="h-3 w-3 mr-1" />Walk-in
@@ -556,28 +580,59 @@ const Quotations = () => {
               </div>
 
               {/* Products Section */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-semibold">Products</Label>
                   <div className="flex gap-2">
-                    <Button type="button" onClick={addQuotationItem} variant="outline" size="sm">
-                      <Plus className="h-4 w-4 mr-1" />Add Product
+                    <Button type="button" onClick={addQuotationItem} variant="outline" size="sm" className="h-7 text-xs">
+                      <Plus className="h-3 w-3 mr-1" />Add Product
                     </Button>
-                    <Button type="button" onClick={() => setIsQuickAddOpen(true)} variant="outline" size="sm">
-                      <Package className="h-4 w-4 mr-1" />Quick Add
+                    <Button type="button" onClick={() => setIsQuickAddOpen(true)} variant="outline" size="sm" className="h-7 text-xs">
+                      <Package className="h-3 w-3 mr-1" />Quick Add
                     </Button>
                   </div>
                 </div>
 
-                {/* Search Bar */}
+                {/* Enhanced Search Bar */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search products by name, SKU, or batch code..."
+                    placeholder="Search by SKU, product name, or batch code..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-9"
                   />
+                  {productSearch && filteredMaterials.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredMaterials.slice(0, 5).map((material) => (
+                        <div
+                          key={material.id}
+                          className="p-2 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                          onClick={() => {
+                            const newItem = {
+                              id: Date.now(),
+                              material_id: material.id,
+                              material_name: material.name,
+                              quantity: 1,
+                              unit_price: material.base_price || 0,
+                              delivery_time: "ready_stock",
+                              notes: ""
+                            };
+                            setQuotationItems([...quotationItems, newItem]);
+                            setProductSearch("");
+                            setTimeout(calculateTotals, 0);
+                          }}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{material.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              SKU: {material.sku} {material.batch_no && ` | Batch: ${material.batch_no}`} | ₹{material.base_price || 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 {quotationItems.length === 0 ? (
@@ -586,46 +641,54 @@ const Quotations = () => {
                     <p>No products added yet. Click "Add Product" to get started.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {/* Header Row */}
-                    <div className="grid grid-cols-12 gap-3 px-3 py-2 bg-muted/50 rounded-lg text-sm font-medium text-muted-foreground">
-                      <div className="col-span-4">Product</div>
-                      <div className="col-span-2">Qty</div>
-                      <div className="col-span-2">Rate</div>
-                      <div className="col-span-2">Total</div>
-                      <div className="col-span-1">Delivery</div>
-                      <div className="col-span-1"></div>
+                  <div className="space-y-2">
+                    {/* Compact Header Row */}
+                    <div className="grid grid-cols-12 gap-2 px-2 py-1 bg-muted/30 rounded text-xs font-medium text-muted-foreground">
+                      <div className="col-span-5">Product</div>
+                      <div className="col-span-1 text-center">Qty</div>
+                      <div className="col-span-2 text-right">Rate</div>
+                      <div className="col-span-2 text-right">Total</div>
+                      <div className="col-span-1 text-center">Delivery</div>
+                      <div className="col-span-1 text-center"></div>
                     </div>
 
                     {quotationItems.map((item, index) => (
-                      <div key={item.id} className="grid grid-cols-12 gap-3 p-3 border rounded-lg bg-card">
-                        <div className="col-span-4">
+                      <div key={item.id} className="grid grid-cols-12 gap-2 p-2 border rounded bg-card hover:bg-muted/20 transition-colors">
+                        <div className="col-span-5">
                           <Select
                             value={item.material_id}
                             onValueChange={(value) => updateQuotationItem(index, "material_id", value)}
                           >
-                            <SelectTrigger className="h-9">
-                              <SelectValue placeholder="Search and select product..." />
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Select SKU..." />
                             </SelectTrigger>
                             <SelectContent className="max-h-[200px]">
-                              {filteredMaterials.map((material) => (
+                              {(productSearch ? filteredMaterials : materials || []).map((material) => (
                                 <SelectItem key={material.id} value={material.id}>
                                   <div className="flex flex-col">
-                                    <span className="font-medium">{material.name}</span>
+                                    <span className="font-medium text-sm">{material.name}</span>
                                     <span className="text-xs text-muted-foreground">
-                                      SKU: {material.sku} {material.batch_no && ` | Batch: ${material.batch_no}`}
+                                      SKU: {material.sku} {material.batch_no && ` | Batch: ${material.batch_no}`} | ₹{material.base_price || 0}
                                     </span>
                                   </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
+                          {item.material_id && materials && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {(() => {
+                                const material = materials.find(m => m.id === item.material_id);
+                                return material ? `SKU: ${material.sku}${material.batch_no ? ` | Batch: ${material.batch_no}` : ''}` : '';
+                              })()}
+                            </div>
+                          )}
                         </div>
-                        <div className="col-span-2">
+                        <div className="col-span-1">
                           <Input
                             type="number"
                             placeholder="Qty"
-                            className="h-9 text-center"
+                            className="h-8 text-center text-sm"
                             value={item.quantity}
                             onChange={(e) => updateQuotationItem(index, "quantity", parseFloat(e.target.value) || 0)}
                           />
@@ -634,13 +697,13 @@ const Quotations = () => {
                           <Input
                             type="number"
                             placeholder="Price"
-                            className="h-9 text-right"
+                            className="h-8 text-right text-sm"
                             value={item.unit_price}
                             onChange={(e) => updateQuotationItem(index, "unit_price", parseFloat(e.target.value) || 0)}
                           />
                         </div>
                         <div className="col-span-2">
-                          <div className="h-9 flex items-center justify-end px-3 bg-muted/50 rounded border text-sm font-medium">
+                          <div className="h-8 flex items-center justify-end px-2 bg-muted/30 rounded text-sm font-medium">
                             ₹{(item.quantity * item.unit_price).toLocaleString()}
                           </div>
                         </div>
@@ -649,14 +712,14 @@ const Quotations = () => {
                             value={item.delivery_time || "ready_stock"}
                             onValueChange={(value) => updateQuotationItem(index, "delivery_time", value)}
                           >
-                            <SelectTrigger className="h-9 w-full">
+                            <SelectTrigger className="h-8 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="ready_stock">Ready Stock</SelectItem>
-                              <SelectItem value="3_5_days">3-5 Days</SelectItem>
-                              <SelectItem value="5_8_days">5-8 Days</SelectItem>
-                              <SelectItem value="material_transit">In Transit</SelectItem>
+                              <SelectItem value="ready_stock">Stock</SelectItem>
+                              <SelectItem value="3_5_days">3-5d</SelectItem>
+                              <SelectItem value="5_8_days">5-8d</SelectItem>
+                              <SelectItem value="material_transit">Transit</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -665,7 +728,7 @@ const Quotations = () => {
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="h-5 w-5 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => removeQuotationItem(index)}
                           >
                             <Trash2 className="h-3 w-3" />
@@ -677,15 +740,16 @@ const Quotations = () => {
                 )}
               </div>
 
-              {/* Financial Summary */}
-              <div className="p-4 border rounded-lg bg-muted/20">
-                <div className="flex items-center gap-4 mb-3">
-                  <Label className="text-base font-semibold">Financial Summary</Label>
-                  <div className="flex gap-2">
+              {/* Compact Financial Summary */}
+              <div className="p-3 border rounded-lg bg-muted/20">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-semibold">Financial Summary</Label>
+                  <div className="flex gap-1">
                     <Button
                       type="button"
                       variant={parseFloat(formData.tax_amount) > 0 ? "default" : "outline"}
                       size="sm"
+                      className="h-6 text-xs px-2"
                       onClick={() => toggleCharge("tax_amount", (parseFloat(formData.total_amount) || 0) * 0.18)}
                     >
                       GST 18%
@@ -694,6 +758,7 @@ const Quotations = () => {
                       type="button"
                       variant={parseFloat(formData.freight_charges) > 0 ? "default" : "outline"}
                       size="sm"
+                      className="h-6 text-xs px-2"
                       onClick={() => toggleCharge("freight_charges", 500)}
                     >
                       Freight ₹500
@@ -702,6 +767,7 @@ const Quotations = () => {
                       type="button"
                       variant={parseFloat(formData.handling_charges) > 0 ? "default" : "outline"}
                       size="sm"
+                      className="h-6 text-xs px-2"
                       onClick={() => toggleCharge("handling_charges", 200)}
                     >
                       Handling ₹200
@@ -709,26 +775,26 @@ const Quotations = () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-4 gap-4 text-sm">
-                  <div>
+                <div className="grid grid-cols-4 gap-3 text-sm">
+                  <div className="bg-background/50 p-2 rounded">
                     <Label className="text-xs text-muted-foreground">Base Amount</Label>
-                    <div className="font-semibold">₹{parseFloat(formData.total_amount || "0").toLocaleString()}</div>
+                    <div className="font-semibold text-sm">₹{parseFloat(formData.total_amount || "0").toLocaleString()}</div>
                   </div>
-                  <div>
+                  <div className="bg-background/50 p-2 rounded">
                     <Label className="text-xs text-muted-foreground">Tax (GST)</Label>
-                    <div className="font-semibold">₹{parseFloat(formData.tax_amount || "0").toLocaleString()}</div>
+                    <div className="font-semibold text-sm">₹{parseFloat(formData.tax_amount || "0").toLocaleString()}</div>
                   </div>
-                  <div>
+                  <div className="bg-background/50 p-2 rounded">
                     <Label className="text-xs text-muted-foreground">Other Charges</Label>
-                    <div className="font-semibold">
+                    <div className="font-semibold text-sm">
                       ₹{((parseFloat(formData.handling_charges || "0")) + 
                           (parseFloat(formData.freight_charges || "0")) + 
                           (parseFloat(formData.packing_charges || "0"))).toLocaleString()}
                     </div>
                   </div>
-                  <div className="bg-primary/10 p-2 rounded">
+                  <div className="bg-primary/10 p-2 rounded border border-primary/20">
                     <Label className="text-xs text-muted-foreground">Grand Total</Label>
-                    <div className="font-bold text-lg">₹{parseFloat(formData.grand_total || "0").toLocaleString()}</div>
+                    <div className="font-bold text-base">₹{parseFloat(formData.grand_total || "0").toLocaleString()}</div>
                   </div>
                 </div>
               </div>
