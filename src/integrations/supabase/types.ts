@@ -142,17 +142,25 @@ export type Database = {
       }
       materials: {
         Row: {
+          bar_shape: string | null
           base_price: number | null
           batch_no: string | null
+          batch_weight: number | null
           category: string
           created_at: string
           description: string | null
+          diameter: number | null
           finish: string | null
           grade: string
+          heat_number: string | null
           id: string
           is_active: boolean
           length: number | null
+          make: string | null
           name: string
+          no_of_sheets: number | null
+          pipe_type: string | null
+          size_description: string | null
           sku: string
           thickness: number | null
           unit: string
@@ -160,17 +168,25 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          bar_shape?: string | null
           base_price?: number | null
           batch_no?: string | null
+          batch_weight?: number | null
           category: string
           created_at?: string
           description?: string | null
+          diameter?: number | null
           finish?: string | null
           grade: string
+          heat_number?: string | null
           id?: string
           is_active?: boolean
           length?: number | null
+          make?: string | null
           name: string
+          no_of_sheets?: number | null
+          pipe_type?: string | null
+          size_description?: string | null
           sku: string
           thickness?: number | null
           unit?: string
@@ -178,17 +194,25 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          bar_shape?: string | null
           base_price?: number | null
           batch_no?: string | null
+          batch_weight?: number | null
           category?: string
           created_at?: string
           description?: string | null
+          diameter?: number | null
           finish?: string | null
           grade?: string
+          heat_number?: string | null
           id?: string
           is_active?: boolean
           length?: number | null
+          make?: string | null
           name?: string
+          no_of_sheets?: number | null
+          pipe_type?: string | null
+          size_description?: string | null
           sku?: string
           thickness?: number | null
           unit?: string

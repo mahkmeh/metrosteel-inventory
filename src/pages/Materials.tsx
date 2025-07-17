@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Package, Edit, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Edit, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { MaterialFormSteps } from "@/components/MaterialForm/MaterialFormSteps";
+import { CategoryStep } from "@/components/MaterialForm/steps/CategoryStep";
+import { SubTypeStep } from "@/components/MaterialForm/steps/SubTypeStep";
+import { DimensionsStep } from "@/components/MaterialForm/steps/DimensionsStep";
+import { BusinessInfoStep } from "@/components/MaterialForm/steps/BusinessInfoStep";
+import { DetailsStep } from "@/components/MaterialForm/steps/DetailsStep";
 
 const Materials = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,19 +21,39 @@ const Materials = () => {
   const [editingMaterial, setEditingMaterial] = useState<any>(null);
   const [sortField, setSortField] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  
+  // Multi-step form state
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
+    // Basic info
     name: "",
-    grade: "",
     category: "",
+    grade: "",
+    sku: "",
+    make: "",
+    unit: "KG",
+    base_price: "",
+    description: "",
+    
+    // Dimensions
     thickness: "",
     width: "",
     length: "",
+    diameter: "",
+    
+    // Category specific
+    pipe_type: "",
+    bar_shape: "",
+    size_description: "",
+    
+    // Batch info
+    batch_no: "",
+    heat_number: "",
+    no_of_sheets: "",
+    batch_weight: "",
+    
+    // Finish
     finish: "",
-    unit: "MT",
-    base_price: "",
-    description: "",
-    sku: "",
-    batch_no: ""
   });
 
   const { toast } = useToast();
@@ -102,36 +125,54 @@ const Materials = () => {
   const resetForm = () => {
     setFormData({
       name: "",
-      grade: "",
       category: "",
+      grade: "",
+      sku: "",
+      make: "",
+      unit: "KG",
+      base_price: "",
+      description: "",
       thickness: "",
       width: "",
       length: "",
+      diameter: "",
+      pipe_type: "",
+      bar_shape: "",
+      size_description: "",
+      batch_no: "",
+      heat_number: "",
+      no_of_sheets: "",
+      batch_weight: "",
       finish: "",
-      unit: "MT",
-      base_price: "",
-      description: "",
-      sku: "",
-      batch_no: ""
     });
+    setCurrentStep(1);
   };
 
   const handleEdit = (material: any) => {
     setEditingMaterial(material);
     setFormData({
-      name: material.name,
-      grade: material.grade,
-      category: material.category,
+      name: material.name || "",
+      category: material.category || "",
+      grade: material.grade || "",
+      sku: material.sku || "",
+      make: material.make || "",
+      unit: material.unit || "KG",
+      base_price: material.base_price?.toString() || "",
+      description: material.description || "",
       thickness: material.thickness?.toString() || "",
       width: material.width?.toString() || "",
       length: material.length?.toString() || "",
+      diameter: material.diameter?.toString() || "",
+      pipe_type: material.pipe_type || "",
+      bar_shape: material.bar_shape || "",
+      size_description: material.size_description || "",
+      batch_no: material.batch_no || "",
+      heat_number: material.heat_number || "",
+      no_of_sheets: material.no_of_sheets?.toString() || "",
+      batch_weight: material.batch_weight?.toString() || "",
       finish: material.finish || "",
-      unit: material.unit,
-      base_price: material.base_price?.toString() || "",
-      description: material.description || "",
-      sku: material.sku || "",
-      batch_no: material.batch_no || ""
     });
+    setCurrentStep(1);
     setIsDialogOpen(true);
   };
 
@@ -144,21 +185,132 @@ const Materials = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMaterial.mutate({
+  const getTotalSteps = () => {
+    if (!formData.category) return 5;
+    
+    // Skip sub-type step for categories that don't need it
+    const needsSubType = formData.category === "Pipe" || formData.category === "Bar";
+    return needsSubType ? 5 : 4;
+  };
+
+  const canProceedToNext = () => {
+    switch (currentStep) {
+      case 1: // Category step
+        return formData.category !== "";
+      case 2: // Sub-type step (if applicable)
+        if (formData.category === "Pipe") return formData.pipe_type !== "";
+        if (formData.category === "Bar") return formData.bar_shape !== "";
+        return true;
+      case 3: // Dimensions step
+        return formData.grade !== "";
+      case 4: // Business info step
+        return formData.sku !== "" && formData.make !== "";
+      case 5: // Details step
+        return formData.name !== "";
+      default:
+        return false;
+    }
+  };
+
+  const handleNext = () => {
+    if (canProceedToNext()) {
+      const totalSteps = getTotalSteps();
+      const needsSubType = formData.category === "Pipe" || formData.category === "Bar";
+      
+      if (currentStep === 1 && !needsSubType) {
+        setCurrentStep(3); // Skip sub-type step
+      } else if (currentStep < totalSteps) {
+        setCurrentStep(currentStep + 1);
+      }
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      const needsSubType = formData.category === "Pipe" || formData.category === "Bar";
+      
+      if (currentStep === 3 && !needsSubType) {
+        setCurrentStep(1); // Skip sub-type step backwards
+      } else {
+        setCurrentStep(currentStep - 1);
+      }
+    }
+  };
+
+  const handleSubmit = () => {
+    const materialData = {
       ...formData,
       thickness: formData.thickness ? parseFloat(formData.thickness) : null,
       width: formData.width ? parseFloat(formData.width) : null,
       length: formData.length ? parseFloat(formData.length) : null,
+      diameter: formData.diameter ? parseFloat(formData.diameter) : null,
       base_price: formData.base_price ? parseFloat(formData.base_price) : null,
-    });
+      no_of_sheets: formData.no_of_sheets ? parseInt(formData.no_of_sheets) : null,
+      batch_weight: formData.batch_weight ? parseFloat(formData.batch_weight) : null,
+    };
+
+    createMaterial.mutate(materialData);
   };
 
-  const grades = ["304", "316", "316L", "202", "201", "430", "409"];
-  const categories = ["Sheet", "Pipe", "Rod", "Bar", "Coil", "Plate"];
-  const finishes = ["2B", "BA", "HL", "NO.4", "Mirror", "Satin"];
-  const units = ["MT", "KG", "PCS", "SQM"];
+  const renderCurrentStep = () => {
+    const totalSteps = getTotalSteps();
+    const needsSubType = formData.category === "Pipe" || formData.category === "Bar";
+    
+    // Adjust step numbers for categories without sub-type
+    let adjustedStep = currentStep;
+    if (!needsSubType && currentStep >= 3) {
+      adjustedStep = currentStep + 1;
+    }
+
+    switch (adjustedStep) {
+      case 1:
+        return (
+          <CategoryStep
+            selectedCategory={formData.category}
+            onCategoryChange={(category) => setFormData({ ...formData, category, pipe_type: "", bar_shape: "" })}
+          />
+        );
+      case 2:
+        return (
+          <SubTypeStep
+            category={formData.category}
+            selectedSubType={formData.category === "Pipe" ? formData.pipe_type : formData.bar_shape}
+            onSubTypeChange={(subType) => {
+              if (formData.category === "Pipe") {
+                setFormData({ ...formData, pipe_type: subType });
+              } else if (formData.category === "Bar") {
+                setFormData({ ...formData, bar_shape: subType });
+              }
+            }}
+          />
+        );
+      case 3:
+        return (
+          <DimensionsStep
+            category={formData.category}
+            subType={formData.category === "Pipe" ? formData.pipe_type : formData.bar_shape}
+            formData={formData}
+            onFormDataChange={setFormData}
+          />
+        );
+      case 4:
+        return (
+          <BusinessInfoStep
+            formData={formData}
+            onFormDataChange={setFormData}
+          />
+        );
+      case 5:
+        return (
+          <DetailsStep
+            formData={formData}
+            onFormDataChange={setFormData}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="px-4 sm:px-0">
@@ -180,183 +332,67 @@ const Materials = () => {
               Add Material
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingMaterial ? "Edit Material" : "Add New Material"}</DialogTitle>
               <DialogDescription>
                 {editingMaterial ? "Update the steel material details" : "Create a new steel material entry"}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Material Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., SS304 Sheet"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="grade">Grade</Label>
-                  <Select value={formData.grade} onValueChange={(value) => setFormData({ ...formData, grade: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select grade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {grades.map((grade) => (
-                        <SelectItem key={grade} value={grade}>{grade}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="finish">Finish</Label>
-                  <Select value={formData.finish} onValueChange={(value) => setFormData({ ...formData, finish: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select finish" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {finishes.map((finish) => (
-                        <SelectItem key={finish} value={finish}>{finish}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="thickness">Thickness (mm)</Label>
-                  <Input
-                    id="thickness"
-                    type="number"
-                    step="0.001"
-                    value={formData.thickness}
-                    onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
-                    placeholder="1.5"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="width">Width (mm)</Label>
-                  <Input
-                    id="width"
-                    type="number"
-                    step="0.001"
-                    value={formData.width}
-                    onChange={(e) => setFormData({ ...formData, width: e.target.value })}
-                    placeholder="1219"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="length">Length (mm)</Label>
-                  <Input
-                    id="length"
-                    type="number"
-                    step="0.001"
-                    value={formData.length}
-                    onChange={(e) => setFormData({ ...formData, length: e.target.value })}
-                    placeholder="2438"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="unit">Unit</Label>
-                  <Select value={formData.unit} onValueChange={(value) => setFormData({ ...formData, unit: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {units.map((unit) => (
-                        <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="base_price">Base Price</Label>
-                  <Input
-                    id="base_price"
-                    type="number"
-                    step="0.01"
-                    value={formData.base_price}
-                    onChange={(e) => setFormData({ ...formData, base_price: e.target.value })}
-                    placeholder="150000"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Additional details about the material..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="sku">SKU (Stock Keeping Unit)</Label>
-                  <Input
-                    id="sku"
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    placeholder="e.g., SS304-SHT-150x1219"
-                    required
-                  />
-                </div>
-                {(formData.category === "Sheet" || formData.category === "Pipe") && (
-                  <div>
-                    <Label htmlFor="batch_no">Batch Number</Label>
-                    <Input
-                      id="batch_no"
-                      value={formData.batch_no}
-                      onChange={(e) => setFormData({ ...formData, batch_no: e.target.value })}
-                      placeholder="e.g., BT2024001"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => {
-                  setIsDialogOpen(false);
-                  setEditingMaterial(null);
-                  resetForm();
-                }}>
-                  Cancel
+            
+            <div className="space-y-6">
+              <MaterialFormSteps currentStep={currentStep} totalSteps={getTotalSteps()} />
+              
+              {renderCurrentStep()}
+              
+              <div className="flex justify-between">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={handlePrevious}
+                  disabled={currentStep === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Previous
                 </Button>
-                <Button type="submit" disabled={createMaterial.isPending}>
-                  {createMaterial.isPending 
-                    ? (editingMaterial ? "Updating..." : "Creating...") 
-                    : (editingMaterial ? "Update Material" : "Create Material")
-                  }
-                </Button>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      setEditingMaterial(null);
+                      resetForm();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  
+                  {currentStep < getTotalSteps() ? (
+                    <Button 
+                      type="button"
+                      onClick={handleNext}
+                      disabled={!canProceedToNext()}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button 
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={createMaterial.isPending || !canProceedToNext()}
+                    >
+                      {createMaterial.isPending 
+                        ? (editingMaterial ? "Updating..." : "Creating...") 
+                        : (editingMaterial ? "Update Material" : "Create Material")
+                      }
+                    </Button>
+                  )}
+                </div>
               </div>
-            </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -422,6 +458,7 @@ const Materials = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
+                <TableHead>Make</TableHead>
                 <TableHead>Dimensions</TableHead>
                 <TableHead>Finish</TableHead>
                 <TableHead>
@@ -438,56 +475,60 @@ const Materials = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {materials?.map((material) => (
-                <TableRow key={material.id} className="hover:bg-muted/50">
-                  <TableCell className="font-medium">{material.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{material.sku}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{material.grade}</Badge>
-                  </TableCell>
-                  <TableCell>{material.category}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {[
-                      material.thickness && `${material.thickness}mm`,
-                      material.width && `${material.width}mm`,
-                      material.length && `${material.length}mm`
-                    ].filter(Boolean).join(" × ") || "—"}
-                  </TableCell>
-                  <TableCell>{material.finish || "—"}</TableCell>
-                  <TableCell>
-                    {material.base_price ? `₹${material.base_price}/${material.unit}` : "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(material)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+              {materials?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    No materials found. Create your first material to get started.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                materials?.map((material) => (
+                  <TableRow key={material.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">{material.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{material.sku}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{material.grade}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {material.category}
+                        {material.pipe_type && (
+                          <Badge variant="outline" className="text-xs">{material.pipe_type}</Badge>
+                        )}
+                        {material.bar_shape && (
+                          <Badge variant="outline" className="text-xs">{material.bar_shape}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{material.make || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {material.size_description || [
+                        material.thickness && `${material.thickness}mm`,
+                        material.width && `${material.width}mm`,
+                        material.length && `${material.length}mm`,
+                        material.diameter && `⌀${material.diameter}mm`
+                      ].filter(Boolean).join(" × ") || "—"}
+                    </TableCell>
+                    <TableCell>{material.finish || "—"}</TableCell>
+                    <TableCell>
+                      {material.base_price ? `₹${material.base_price}/${material.unit}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(material)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
-        </div>
-      )}
-
-      {materials?.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">No materials found</h3>
-          <p className="text-muted-foreground mb-4">
-            {searchTerm ? "Try adjusting your search terms" : "Get started by adding your first material"}
-          </p>
-          {!searchTerm && (
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Material
-            </Button>
-          )}
         </div>
       )}
     </div>
