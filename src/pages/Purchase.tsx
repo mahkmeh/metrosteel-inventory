@@ -12,9 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, Truck, Package, X, Search } from "lucide-react";
+import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, Truck, Package, X, Search, AlertTriangle, DollarSign, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+import { KpiCard } from "@/components/KpiCard";
+import { usePurchaseKpis } from "@/hooks/usePurchaseKpis";
 
 const Purchase = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -37,6 +39,7 @@ const Purchase = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: kpiData, isLoading: kpiLoading } = usePurchaseKpis();
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["purchase-orders", sortField, sortDirection],
@@ -322,6 +325,46 @@ const Purchase = () => {
 
   return (
     <div className="container mx-auto py-6">
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <KpiCard
+          title="Overdue Deliveries"
+          value={typeof kpiData?.overdueDeliveries === 'object' ? kpiData.overdueDeliveries.count || 0 : kpiData?.overdueDeliveries || 0}
+          subtitle={`${kpiData?.overdueDeliveries?.avgDaysLate || 0} days late avg`}
+          status="critical"
+          icon={Package}
+          actionLabel="Contact Supplier"
+          onAction={() => toast({ title: "Contact Supplier", description: "Opening supplier contact view" })}
+        />
+        <KpiCard
+          title="Pending Approvals"
+          value={kpiData?.pendingApprovals.count || 0}
+          subtitle={`₹${(kpiData?.pendingApprovals.value || 0).toLocaleString('en-IN')}`}
+          status="warning"
+          icon={AlertTriangle}
+          actionLabel="Approve"
+          onAction={() => toast({ title: "Approve", description: "Opening approval workflow" })}
+        />
+        <KpiCard
+          title="Payment Due Today/Tomorrow"
+          value={`₹${(kpiData?.paymentsDue.amount || 0).toLocaleString('en-IN')}`}
+          subtitle={`${kpiData?.paymentsDue.suppliers || 0} suppliers`}
+          status="critical"
+          icon={DollarSign}
+          actionLabel="Process Payment"
+          onAction={() => toast({ title: "Process Payment", description: "Opening payment processing" })}
+        />
+        <KpiCard
+          title="Quality Issues"
+          value={kpiData?.qualityIssues || 0}
+          subtitle="materials on hold"
+          status="warning"
+          icon={AlertCircle}
+          actionLabel="Resolve"
+          onAction={() => toast({ title: "Resolve", description: "Opening quality management" })}
+        />
+      </div>
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">

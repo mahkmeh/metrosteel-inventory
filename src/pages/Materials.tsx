@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Edit, ArrowUpDown, ChevronLeft, ChevronRight, AlertTriangle, Package, DollarSign, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { KpiCard } from "@/components/KpiCard";
+import { useMaterialKpis } from "@/hooks/useMaterialKpis";
 import { MaterialFormSteps } from "@/components/MaterialForm/MaterialFormSteps";
 import { CategoryStep } from "@/components/MaterialForm/steps/CategoryStep";
 import { SubTypeStep } from "@/components/MaterialForm/steps/SubTypeStep";
@@ -56,6 +58,7 @@ const Materials = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: kpiData, isLoading: kpiLoading } = useMaterialKpis();
 
   const { data: materials, isLoading } = useQuery({
     queryKey: ["materials", searchTerm, sortField, sortDirection],
@@ -343,6 +346,46 @@ const Materials = () => {
 
   return (
     <div className="px-4 sm:px-0">
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <KpiCard
+          title="Reorder Now"
+          value={kpiData?.reorderNow || 0}
+          subtitle="below minimum"
+          status="critical"
+          icon={AlertTriangle}
+          actionLabel="Create PO"
+          onAction={() => toast({ title: "Create PO", description: "Opening purchase order creation" })}
+        />
+        <KpiCard
+          title="Excess Stock"
+          value={kpiData?.excessStock.count || 0}
+          subtitle={`₹${(kpiData?.excessStock.value || 0).toLocaleString('en-IN')} value`}
+          status="warning"
+          icon={Package}
+          actionLabel="Liquidate"
+          onAction={() => toast({ title: "Liquidate", description: "Opening stock liquidation" })}
+        />
+        <KpiCard
+          title="Price Updates Required"
+          value={kpiData?.priceUpdatesRequired || 0}
+          subtitle="with old prices"
+          status="info"
+          icon={DollarSign}
+          actionLabel="Update Pricing"
+          onAction={() => toast({ title: "Update Pricing", description: "Opening price update workflow" })}
+        />
+        <KpiCard
+          title="Quality Hold"
+          value={kpiData?.qualityHold || 0}
+          subtitle="materials on hold"
+          status="warning"
+          icon={ShieldAlert}
+          actionLabel="Quality Check"
+          onAction={() => toast({ title: "Quality Check", description: "Opening quality management" })}
+        />
+      </div>
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Materials</h1>
