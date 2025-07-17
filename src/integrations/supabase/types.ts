@@ -316,6 +316,47 @@ export type Database = {
           },
         ]
       }
+      quotation_reminders: {
+        Row: {
+          created_at: string
+          id: string
+          method: string
+          notes: string | null
+          quotation_id: string
+          reminder_type: string
+          sent_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          method: string
+          notes?: string | null
+          quotation_id: string
+          reminder_type: string
+          sent_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          quotation_id?: string
+          reminder_type?: string
+          sent_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_reminders_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotations: {
         Row: {
           company_address: string | null
