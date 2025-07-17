@@ -11,9 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MaterialFormSteps } from "@/components/MaterialForm/MaterialFormSteps";
 import { CategoryStep } from "@/components/MaterialForm/steps/CategoryStep";
 import { SubTypeStep } from "@/components/MaterialForm/steps/SubTypeStep";
-import { DimensionsStep } from "@/components/MaterialForm/steps/DimensionsStep";
-import { BusinessInfoStep } from "@/components/MaterialForm/steps/BusinessInfoStep";
-import { DetailsStep } from "@/components/MaterialForm/steps/DetailsStep";
+import { CombinedFormStep } from "@/components/MaterialForm/steps/CombinedFormStep";
 
 const Materials = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -186,54 +184,68 @@ const Materials = () => {
   };
 
   const getTotalSteps = () => {
-    if (!formData.category) return 5;
-    
-    // Skip sub-type step for categories that don't need it
-    const needsSubType = formData.category === "Pipe" || formData.category === "Bar";
-    return needsSubType ? 5 : 4;
+    if (formData.category === "Pipe" || formData.category === "Bar") {
+      return 3; // Category → Sub-type → Complete Form
+    }
+    return 2; // Category → Complete Form
   };
 
   const canProceedToNext = () => {
-    switch (currentStep) {
-      case 1: // Category step
-        return formData.category !== "";
-      case 2: // Sub-type step (if applicable)
-        if (formData.category === "Pipe") return formData.pipe_type !== "";
-        if (formData.category === "Bar") return formData.bar_shape !== "";
-        return true;
-      case 3: // Dimensions step
-        return formData.grade !== "";
-      case 4: // Business info step
-        return formData.sku !== "" && formData.make !== "";
-      case 5: // Details step
-        return formData.name !== "";
+    if (currentStep === 1) {
+      return !!formData.category;
+    }
+    
+    if (currentStep === 2) {
+      // If category requires sub-type, check sub-type
+      if (formData.category === "Pipe" || formData.category === "Bar") {
+        return !!(formData.pipe_type || formData.bar_shape);
+      }
+      // For categories without sub-type, step 2 is the complete form
+      return validateAllFields();
+    }
+    
+    if (currentStep === 3) {
+      // This is the complete form step for categories with sub-type
+      return validateAllFields();
+    }
+    
+    return false;
+  };
+
+  const validateAllFields = () => {
+    // Check required fields common to all categories
+    if (!formData.grade || !formData.sku || !formData.make || !formData.name) return false;
+    
+    // Check category-specific dimension fields
+    switch (formData.category) {
+      case "Sheet":
+        return !!(formData.thickness && formData.width && formData.length);
+      case "Pipe":
+        return !!(formData.thickness && formData.diameter && formData.length);
+      case "Bar":
+        if (formData.bar_shape === "Round") {
+          return !!(formData.diameter && formData.length);
+        } else {
+          return !!(formData.width && formData.length);
+        }
+      case "Flat":
+        return !!(formData.width && formData.thickness && formData.length);
+      case "Angle":
+        return !!(formData.size_description && formData.thickness && formData.length);
       default:
         return false;
     }
   };
 
   const handleNext = () => {
-    if (canProceedToNext()) {
-      const totalSteps = getTotalSteps();
-      const needsSubType = formData.category === "Pipe" || formData.category === "Bar";
-      
-      if (currentStep === 1 && !needsSubType) {
-        setCurrentStep(3); // Skip sub-type step
-      } else if (currentStep < totalSteps) {
-        setCurrentStep(currentStep + 1);
-      }
+    if (canProceedToNext() && currentStep < getTotalSteps()) {
+      setCurrentStep(currentStep + 1);
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 1) {
-      const needsSubType = formData.category === "Pipe" || formData.category === "Bar";
-      
-      if (currentStep === 3 && !needsSubType) {
-        setCurrentStep(1); // Skip sub-type step backwards
-      } else {
-        setCurrentStep(currentStep - 1);
-      }
+      setCurrentStep(currentStep - 1);
     }
   };
 
@@ -277,28 +289,22 @@ const Materials = () => {
   };
 
   const renderCurrentStep = () => {
-    const totalSteps = getTotalSteps();
-    const needsSubType = formData.category === "Pipe" || formData.category === "Bar";
-    
-    // Adjust step numbers for categories without sub-type
-    let adjustedStep = currentStep;
-    if (!needsSubType && currentStep >= 3) {
-      adjustedStep = currentStep + 1;
+    if (currentStep === 1) {
+      return (
+        <CategoryStep
+          selectedCategory={formData.category}
+          onCategoryChange={(category) => setFormData({ ...formData, category })}
+        />
+      );
     }
 
-    switch (adjustedStep) {
-      case 1:
-        return (
-          <CategoryStep
-            selectedCategory={formData.category}
-            onCategoryChange={(category) => setFormData({ ...formData, category, pipe_type: "", bar_shape: "" })}
-          />
-        );
-      case 2:
+    if (currentStep === 2) {
+      // If category requires sub-type, show SubTypeStep
+      if (formData.category === "Pipe" || formData.category === "Bar") {
         return (
           <SubTypeStep
             category={formData.category}
-            selectedSubType={formData.category === "Pipe" ? formData.pipe_type : formData.bar_shape}
+            selectedSubType={formData.pipe_type || formData.bar_shape || ""}
             onSubTypeChange={(subType) => {
               if (formData.category === "Pipe") {
                 setFormData({ ...formData, pipe_type: subType });
@@ -308,32 +314,31 @@ const Materials = () => {
             }}
           />
         );
-      case 3:
-        return (
-          <DimensionsStep
-            category={formData.category}
-            subType={formData.category === "Pipe" ? formData.pipe_type : formData.bar_shape}
-            formData={formData}
-            onFormDataChange={setFormData}
-          />
-        );
-      case 4:
-        return (
-          <BusinessInfoStep
-            formData={formData}
-            onFormDataChange={setFormData}
-          />
-        );
-      case 5:
-        return (
-          <DetailsStep
-            formData={formData}
-            onFormDataChange={setFormData}
-          />
-        );
-      default:
-        return null;
+      }
+      // Otherwise, show CombinedFormStep
+      return (
+        <CombinedFormStep
+          category={formData.category}
+          subType=""
+          formData={formData}
+          onFormDataChange={setFormData}
+        />
+      );
     }
+
+    if (currentStep === 3) {
+      // This is CombinedFormStep for categories with sub-type
+      return (
+        <CombinedFormStep
+          category={formData.category}
+          subType={formData.pipe_type || formData.bar_shape || ""}
+          formData={formData}
+          onFormDataChange={setFormData}
+        />
+      );
+    }
+
+    return null;
   };
 
   return (

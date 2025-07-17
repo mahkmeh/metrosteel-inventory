@@ -1,6 +1,7 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Circle, Square, Hexagon, Gauge, Ruler } from "lucide-react";
 
 interface SubTypeStepProps {
   category: string;
@@ -17,14 +18,39 @@ export const SubTypeStep: React.FC<SubTypeStepProps> = ({
     switch (category) {
       case "Pipe":
         return [
-          { value: "OD", label: "OD (Outer Diameter)", description: "Measured by outer diameter" },
-          { value: "NB", label: "NB (Nominal Bore)", description: "Measured by nominal bore size" },
+          { 
+            value: "OD", 
+            label: "OD (Outer Diameter)", 
+            description: "Measured by outer diameter",
+            icon: Gauge
+          },
+          { 
+            value: "NB", 
+            label: "NB (Nominal Bore)", 
+            description: "Measured by nominal bore size",
+            icon: Ruler
+          },
         ];
       case "Bar":
         return [
-          { value: "Round", label: "Round Bar", description: "Circular cross-section" },
-          { value: "Square", label: "Square Bar", description: "Square cross-section" },
-          { value: "Hex", label: "Hex Bar", description: "Hexagonal cross-section" },
+          { 
+            value: "Round", 
+            label: "Round Bar", 
+            description: "Circular cross-section",
+            icon: Circle
+          },
+          { 
+            value: "Square", 
+            label: "Square Bar", 
+            description: "Square cross-section",
+            icon: Square
+          },
+          { 
+            value: "Hex", 
+            label: "Hex Bar", 
+            description: "Hexagonal cross-section",
+            icon: Hexagon
+          },
         ];
       default:
         return [];
@@ -59,9 +85,12 @@ export const SubTypeStep: React.FC<SubTypeStepProps> = ({
           >
             <CardContent className="p-4">
               <div className="space-y-2">
-                <Label className="text-base font-medium cursor-pointer">
-                  {option.label}
-                </Label>
+                <div className="flex items-center space-x-3">
+                  <option.icon className="h-5 w-5 text-primary" />
+                  <Label className="text-base font-medium cursor-pointer">
+                    {option.label}
+                  </Label>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {option.description}
                 </p>

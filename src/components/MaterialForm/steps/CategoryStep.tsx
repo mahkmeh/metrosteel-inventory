@@ -1,13 +1,39 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { RectangleHorizontal, Cylinder, Square, Minus, Triangle } from "lucide-react";
 
 const categories = [
-  { value: "Sheet", label: "Sheet", description: "Flat steel sheets with varying dimensions" },
-  { value: "Pipe", label: "Pipe", description: "Tubular steel products (OD/NB)" },
-  { value: "Bar", label: "Bar", description: "Solid bars (Round/Square/Hex)" },
-  { value: "Flat", label: "Flat", description: "Flat bars with width and thickness" },
-  { value: "Angle", label: "Angle", description: "L-shaped structural steel" },
+  { 
+    value: "Sheet", 
+    label: "Sheet", 
+    description: "Flat steel sheets with varying dimensions",
+    icon: RectangleHorizontal
+  },
+  { 
+    value: "Pipe", 
+    label: "Pipe", 
+    description: "Tubular steel products (OD/NB)",
+    icon: Cylinder
+  },
+  { 
+    value: "Bar", 
+    label: "Bar", 
+    description: "Solid bars (Round/Square/Hex)",
+    icon: Square
+  },
+  { 
+    value: "Flat", 
+    label: "Flat", 
+    description: "Flat bars with width and thickness",
+    icon: Minus
+  },
+  { 
+    value: "Angle", 
+    label: "Angle", 
+    description: "L-shaped structural steel",
+    icon: Triangle
+  },
 ];
 
 interface CategoryStepProps {
@@ -41,9 +67,12 @@ export const CategoryStep: React.FC<CategoryStepProps> = ({
           >
             <CardContent className="p-4">
               <div className="space-y-2">
-                <Label className="text-base font-medium cursor-pointer">
-                  {category.label}
-                </Label>
+                <div className="flex items-center space-x-3">
+                  <category.icon className="h-6 w-6 text-primary" />
+                  <Label className="text-base font-medium cursor-pointer">
+                    {category.label}
+                  </Label>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {category.description}
                 </p>
