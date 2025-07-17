@@ -211,7 +211,7 @@ const Sales = () => {
           <DialogTrigger asChild>
             <Button onClick={() => setEditingOrder(null)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Order
+              Add New Sales Order
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
