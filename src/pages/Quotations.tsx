@@ -12,9 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Edit, ArrowUpDown, Download, Eye, Mail, MessageCircle, MapPin, AlertTriangle, Trash2, ChevronDown, Calculator, Search, Package, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 const Quotations = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -45,6 +47,7 @@ const Quotations = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isProductSelectionOpen, setIsProductSelectionOpen] = useState(false);
   const [quickAddData, setQuickAddData] = useState({
     name: "",
     category: "",
@@ -308,6 +311,7 @@ const Quotations = () => {
       freight_charges: parseFloat(formData.freight_charges) || 0,
       packing_charges: parseFloat(formData.packing_charges) || 0,
       grand_total: parseFloat(formData.grand_total) || 0,
+      valid_until: formData.valid_until || null, // Fix date issue
     });
   };
 
@@ -584,7 +588,7 @@ const Quotations = () => {
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-semibold">Products</Label>
                   <div className="flex gap-2">
-                    <Button type="button" onClick={addQuotationItem} variant="outline" size="sm" className="h-7 text-xs">
+                    <Button type="button" onClick={() => setIsProductSelectionOpen(true)} variant="outline" size="sm" className="h-7 text-xs">
                       <Plus className="h-3 w-3 mr-1" />Add Product
                     </Button>
                     <Button type="button" onClick={() => setIsQuickAddOpen(true)} variant="outline" size="sm" className="h-7 text-xs">
@@ -675,14 +679,6 @@ const Quotations = () => {
                               ))}
                             </SelectContent>
                           </Select>
-                          {item.material_id && materials && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {(() => {
-                                const material = materials.find(m => m.id === item.material_id);
-                                return material ? `SKU: ${material.sku}${material.batch_no ? ` | Batch: ${material.batch_no}` : ''}` : '';
-                              })()}
-                            </div>
-                          )}
                         </div>
                         <div className="col-span-1">
                           <Input
@@ -1212,6 +1208,102 @@ const Quotations = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Selection Modal */}
+      <ProductSelectionModal
+        open={isProductSelectionOpen}
+        onOpenChange={setIsProductSelectionOpen}
+        materials={materials || []}
+        onSelectMaterial={(material) => {
+          const newItem = {
+            id: Date.now(),
+            material_id: material.id,
+            material_name: material.name,
+            quantity: 1,
+            unit_price: material.base_price || 0,
+            delivery_time: "ready_stock",
+            notes: ""
+          };
+          setQuotationItems([...quotationItems, newItem]);
+          setTimeout(calculateTotals, 0);
+        }}
+      />
+
+      {/* Quick Add Material Modal */}
+      <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Quick Add Material</DialogTitle>
+            <DialogDescription>
+              Create a new material and add it to the quotation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="quick-name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="quick-name"
+                className="col-span-3"
+                value={quickAddData.name}
+                onChange={(e) => setQuickAddData({ ...quickAddData, name: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="quick-category" className="text-right">
+                Category
+              </Label>
+              <Input
+                id="quick-category"
+                className="col-span-3"
+                value={quickAddData.category}
+                onChange={(e) => setQuickAddData({ ...quickAddData, category: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="quick-grade" className="text-right">
+                Grade
+              </Label>
+              <Input
+                id="quick-grade"
+                className="col-span-3"
+                value={quickAddData.grade}
+                onChange={(e) => setQuickAddData({ ...quickAddData, grade: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="quick-sku" className="text-right">
+                SKU
+              </Label>
+              <Input
+                id="quick-sku"
+                className="col-span-3"
+                value={quickAddData.sku}
+                onChange={(e) => setQuickAddData({ ...quickAddData, sku: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="quick-price" className="text-right">
+                Price
+              </Label>
+              <Input
+                id="quick-price"
+                type="number"
+                className="col-span-3"
+                value={quickAddData.base_price}
+                onChange={(e) => setQuickAddData({ ...quickAddData, base_price: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsQuickAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createQuickMaterial}>Create & Add</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
