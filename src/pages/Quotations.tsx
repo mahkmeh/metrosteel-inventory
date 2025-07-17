@@ -912,33 +912,34 @@ const Quotations = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Quick Add Material Dialog */}
+        {/* Enhanced Quick Add Material Dialog */}
         <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Quick Add Material</DialogTitle>
               <DialogDescription>
-                Add a new material quickly and add it to your quotation
+                Add a new material with essential details - batch allocation can be done later in sales orders
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="quick_name">Material Name *</Label>
+                  <Label htmlFor="quick_name" className="text-xs">Material Name *</Label>
                   <Input
                     id="quick_name"
-                    placeholder="e.g., Steel Plate"
+                    className="h-8 text-sm"
+                    placeholder="e.g., Steel Plate MS"
                     value={quickAddData.name}
                     onChange={(e) => setQuickAddData({ ...quickAddData, name: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="quick_category">Category *</Label>
+                  <Label htmlFor="quick_category" className="text-xs">Category *</Label>
                   <Select
                     value={quickAddData.category}
                     onValueChange={(value) => setQuickAddData({ ...quickAddData, category: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -950,60 +951,73 @@ const Quotations = () => {
                       <SelectItem value="angle">Angle</SelectItem>
                       <SelectItem value="channel">Channel</SelectItem>
                       <SelectItem value="beam">Beam</SelectItem>
+                      <SelectItem value="coil">Coil</SelectItem>
+                      <SelectItem value="wire">Wire</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <Label htmlFor="quick_grade">Grade *</Label>
+                  <Label htmlFor="quick_grade" className="text-xs">Grade *</Label>
                   <Select
                     value={quickAddData.grade}
                     onValueChange={(value) => setQuickAddData({ ...quickAddData, grade: value })}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select grade" />
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Grade" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="MS">MS (Mild Steel)</SelectItem>
+                      <SelectItem value="MS">MS</SelectItem>
                       <SelectItem value="SS304">SS304</SelectItem>
                       <SelectItem value="SS316">SS316</SelectItem>
                       <SelectItem value="IS2062">IS2062</SelectItem>
-                      <SelectItem value="CORTEN">Corten Steel</SelectItem>
+                      <SelectItem value="CORTEN">Corten</SelectItem>
                       <SelectItem value="HCHC">HCHC</SelectItem>
+                      <SelectItem value="CRCA">CRCA</SelectItem>
+                      <SelectItem value="HRCA">HRCA</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="quick_sku">SKU *</Label>
+                  <Label htmlFor="quick_sku" className="text-xs">SKU *</Label>
                   <Input
                     id="quick_sku"
-                    placeholder="e.g., MS-PL-10"
+                    className="h-8 text-sm"
+                    placeholder="Auto-generated"
                     value={quickAddData.sku}
                     onChange={(e) => setQuickAddData({ ...quickAddData, sku: e.target.value })}
                   />
                 </div>
+                <div>
+                  <Label htmlFor="quick_price" className="text-xs">Rate (₹/unit)</Label>
+                  <Input
+                    id="quick_price"
+                    type="number"
+                    className="h-8 text-sm"
+                    placeholder="0"
+                    value={quickAddData.base_price}
+                    onChange={(e) => setQuickAddData({ ...quickAddData, base_price: e.target.value })}
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="quick_price">Base Price (₹/unit)</Label>
-                <Input
-                  id="quick_price"
-                  type="number"
-                  placeholder="0"
-                  value={quickAddData.base_price}
-                  onChange={(e) => setQuickAddData({ ...quickAddData, base_price: e.target.value })}
-                />
+              
+              <div className="p-2 bg-muted/30 rounded text-xs text-muted-foreground">
+                <p><strong>Note:</strong> This creates a basic SKU entry. Batch numbers will be allocated when converting to sales orders for better inventory management.</p>
               </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsQuickAddOpen(false)}>
+              
+              <div className="flex justify-end gap-2 pt-3">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsQuickAddOpen(false)}>
                   Cancel
                 </Button>
                 <Button 
-                  type="button" 
+                  type="button"
+                  size="sm"
                   onClick={createQuickMaterial}
-                  disabled={!quickAddData.name || !quickAddData.category || !quickAddData.grade || !quickAddData.sku}
+                  disabled={!quickAddData.name || !quickAddData.category || !quickAddData.grade}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
+                  <Plus className="h-3 w-3 mr-1" />
                   Add to Quotation
                 </Button>
               </div>
@@ -1028,6 +1042,7 @@ const Quotations = () => {
                   </div>
                 </TableHead>
                 <TableHead>Customer</TableHead>
+                <TableHead>Need</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("grand_total")}>
@@ -1052,15 +1067,28 @@ const Quotations = () => {
                   <TableCell className="font-medium">{quotation.quotation_number}</TableCell>
                   <TableCell>{quotation.customers?.name || "-"}</TableCell>
                   <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {(() => {
+                        const needMap: Record<string, string> = {
+                          immediate: "Immediate",
+                          for_quotation: "Quotation", 
+                          "1_2_days": "1-2 Days",
+                          sos: "SOS"
+                        };
+                        return needMap[quotation.customer_need || "for_quotation"] || "Quotation";
+                      })()}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
                       {getRequirementIcon(quotation.requirement_source)}
-                      <span className="capitalize">{quotation.requirement_source?.replace("_", "-") || "email"}</span>
+                      <span className="capitalize text-xs">{quotation.requirement_source?.replace("_", "-") || "email"}</span>
                     </div>
                   </TableCell>
                   <TableCell>{getPriorityBadge(quotation.grand_total)}</TableCell>
                   <TableCell className="font-medium">{formatCurrency(quotation.grand_total)}</TableCell>
                   <TableCell>{getStatusBadge(quotation.status)}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-xs">
                     {quotation.valid_until
                       ? new Date(quotation.valid_until).toLocaleDateString()
                       : "-"}
