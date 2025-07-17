@@ -14,11 +14,13 @@ import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Edit, ArrowUpDown, Download, Eye, Mail, MessageCircle, MapPin, AlertTriangle, Trash2, ChevronDown, Calculator, Search, Package, Clock, TrendingUp, AlertCircle, Filter } from "lucide-react";
+import { Plus, Edit, ArrowUpDown, Download, Eye, Mail, MessageCircle, MapPin, AlertTriangle, Trash2, ChevronDown, Calculator, Search, Package, Clock, TrendingUp, AlertCircle, Filter, Phone, Users, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { ReminderManagement } from "@/components/ReminderManagement";
 import { StatusSelect } from "@/components/StatusSelect";
+import { KpiCard } from "@/components/KpiCard";
+import { useQuotationKpis } from "@/hooks/useQuotationKpis";
 
 const Quotations = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -66,6 +68,9 @@ const Quotations = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Fetch KPI data
+  const { data: kpiData } = useQuotationKpis();
 
   // Fetch quotations with related data
   const { data: quotations, isLoading } = useQuery({
@@ -480,8 +485,71 @@ const Quotations = () => {
     );
   }
 
+  const kpiCards = [
+    {
+      id: "followUp",
+      title: "Follow-Up Required",
+      value: kpiData?.followUpRequired || 0,
+      subtitle: "Quotes >7 days old",
+      status: (kpiData?.followUpRequired || 0) > 5 ? "critical" as const : (kpiData?.followUpRequired || 0) > 0 ? "warning" as const : "good" as const,
+      icon: Clock,
+      actionLabel: "Send Reminder",
+      details: "Quotes awaiting customer response"
+    },
+    {
+      id: "expiring",
+      title: "Expiring Soon", 
+      value: kpiData?.expiringSoon || 0,
+      subtitle: "Expiring in 3 days",
+      status: (kpiData?.expiringSoon || 0) > 2 ? "critical" as const : (kpiData?.expiringSoon || 0) > 0 ? "warning" as const : "good" as const,
+      icon: AlertTriangle,
+      actionLabel: "Extend/Renew",
+      details: "Act fast to retain opportunities"
+    },
+    {
+      id: "highValue",
+      title: "High Value Pending",
+      value: kpiData?.highValuePending?.count || 0,
+      subtitle: `${formatCurrency(kpiData?.highValuePending?.total || 0)} total`,
+      status: (kpiData?.highValuePending?.count || 0) > 3 ? "critical" as const : (kpiData?.highValuePending?.count || 0) > 0 ? "warning" as const : "good" as const,
+      icon: DollarSign,
+      actionLabel: "Prioritize",
+      details: "High value quotes pending approval"
+    },
+    {
+      id: "conversion",
+      title: "Conversion Overdue",
+      value: kpiData?.conversionOverdue || 0,
+      subtitle: "In 'Sent' status >14 days",
+      status: (kpiData?.conversionOverdue || 0) > 3 ? "critical" as const : (kpiData?.conversionOverdue || 0) > 0 ? "warning" as const : "good" as const,
+      icon: Phone,
+      actionLabel: "Call Customer",
+      details: "Long pending conversions need attention"
+    }
+  ];
+
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* KPI Cards Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {kpiCards.map((kpi) => (
+          <KpiCard
+            key={kpi.id}
+            title={kpi.title}
+            value={kpi.value}
+            subtitle={kpi.subtitle}
+            status={kpi.status}
+            icon={kpi.icon}
+            actionLabel={kpi.actionLabel}
+            onAction={() => {
+              // Action handlers can be implemented later
+              console.log(`Action for ${kpi.id}`);
+            }}
+            details={kpi.details}
+          />
+        ))}
+      </div>
+      
       {/* Header with Title and Centered Add Button */}
       <div className="text-center space-y-4">
         <div>

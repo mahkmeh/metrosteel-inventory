@@ -11,11 +11,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, X, Search } from "lucide-react";
+import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, X, Search, Clock, TrendingUp, AlertCircle, Truck, Bell, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { OrderTimeline } from "@/components/OrderTimeline";
 import { StatusWorkflow } from "@/components/StatusWorkflow";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+import { KpiCard } from "@/components/KpiCard";
+import { useSalesKpis } from "@/hooks/useSalesKpis";
 
 const Sales = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -39,6 +41,9 @@ const Sales = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Fetch KPI data
+  const { data: kpiData } = useSalesKpis();
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["orders", sortField, sortDirection],
@@ -325,6 +330,50 @@ const Sales = () => {
 
   return (
     <div className="container mx-auto py-6">
+      {/* KPI Cards Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <KpiCard
+          title="Orders to Dispatch"
+          value={kpiData?.ordersToDispatch || 0}
+          subtitle="Ready for shipping"
+          status={(kpiData?.ordersToDispatch || 0) > 10 ? "critical" : (kpiData?.ordersToDispatch || 0) > 0 ? "warning" : "good"}
+          icon={Truck}
+          actionLabel="View List"
+          onAction={() => console.log("View dispatch list")}
+          details="Orders pending dispatch"
+        />
+        <KpiCard
+          title="Delayed Orders"
+          value={kpiData?.delayedOrders || 0}
+          subtitle="Overdue >5 days"
+          status={(kpiData?.delayedOrders || 0) > 5 ? "critical" : (kpiData?.delayedOrders || 0) > 0 ? "warning" : "good"}
+          icon={AlertCircle}
+          actionLabel="Escalate"
+          onAction={() => console.log("Escalate orders")}
+          details="Require immediate attention"
+        />
+        <KpiCard
+          title="Payment Collection Due"
+          value={`₹${((kpiData?.paymentCollectionDue?.amount || 0) / 100000).toFixed(1)}L`}
+          subtitle={`${kpiData?.paymentCollectionDue?.count || 0} customers`}
+          status={(kpiData?.paymentCollectionDue?.amount || 0) > 500000 ? "critical" : (kpiData?.paymentCollectionDue?.amount || 0) > 0 ? "warning" : "good"}
+          icon={Bell}
+          actionLabel="Send Notice"
+          onAction={() => console.log("Send payment notice")}
+          details="Outstanding payments"
+        />
+        <KpiCard
+          title="Delivery Confirmations"
+          value={kpiData?.deliveryConfirmationsPending || 0}
+          subtitle="Shipped but not confirmed"
+          status={(kpiData?.deliveryConfirmationsPending || 0) > 5 ? "warning" : "good"}
+          icon={CheckCircle}
+          actionLabel="Follow Up"
+          onAction={() => console.log("Follow up deliveries")}
+          details="Pending confirmations"
+        />
+      </div>
+      
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Sales Orders</h1>
