@@ -37,6 +37,10 @@ const Sales = () => {
     order_date: "",
     delivery_date: "",
     notes: "",
+    gst_rate: "18",
+    freight_charges: "0",
+    packing_charges: "0",
+    other_charges: "0",
   });
 
   const { toast } = useToast();
@@ -192,6 +196,10 @@ const Sales = () => {
       order_date: "",
       delivery_date: "",
       notes: "",
+      gst_rate: "18",
+      freight_charges: "0",
+      packing_charges: "0",
+      other_charges: "0",
     });
     setOrderItems([]);
     setSearchQuery("");
@@ -243,6 +251,23 @@ const Sales = () => {
     return orderItems.reduce((sum, item) => sum + item.line_total, 0);
   };
 
+  const calculateTotalWithCharges = () => {
+    const itemsTotal = getTotalAmount();
+    const gstAmount = (itemsTotal * parseFloat(formData.gst_rate || "0")) / 100;
+    const freightCharges = parseFloat(formData.freight_charges || "0");
+    const packingCharges = parseFloat(formData.packing_charges || "0");
+    const otherCharges = parseFloat(formData.other_charges || "0");
+    
+    return {
+      itemsTotal,
+      gstAmount,
+      freightCharges,
+      packingCharges,
+      otherCharges,
+      grandTotal: itemsTotal + gstAmount + freightCharges + packingCharges + otherCharges
+    };
+  };
+
   const getStockInfo = (material: any) => {
     const totalStock = material.inventory?.reduce((sum: number, inv: any) => sum + (inv.available_quantity || 0), 0) || 0;
     
@@ -265,7 +290,8 @@ const Sales = () => {
       });
       return;
     }
-    createOrderMutation.mutate(formData);
+    const { grandTotal } = calculateTotalWithCharges();
+    createOrderMutation.mutate({ ...formData, total_amount: grandTotal });
   };
 
   const handleEdit = (order: any) => {
@@ -279,6 +305,10 @@ const Sales = () => {
       order_date: order.order_date || "",
       delivery_date: order.delivery_date || "",
       notes: order.notes || "",
+      gst_rate: "18",
+      freight_charges: "0",
+      packing_charges: "0",
+      other_charges: "0",
     });
     setIsDialogOpen(true);
   };
@@ -627,9 +657,82 @@ const Sales = () => {
                         </Card>
                       ))}
 
-                      <div className="flex justify-end pt-4 border-t">
-                        <div className="text-xl font-bold">
-                          Total: ₹{getTotalAmount().toFixed(2)}
+                      {/* Summary Section */}
+                      <div className="pt-4 border-t space-y-3">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <Label htmlFor="gst_rate">GST Rate (%)</Label>
+                            <Input
+                              id="gst_rate"
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={formData.gst_rate}
+                              onChange={(e) => setFormData({ ...formData, gst_rate: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="freight_charges">Freight Charges</Label>
+                            <Input
+                              id="freight_charges"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={formData.freight_charges}
+                              onChange={(e) => setFormData({ ...formData, freight_charges: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="packing_charges">Packing Charges</Label>
+                            <Input
+                              id="packing_charges"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={formData.packing_charges}
+                              onChange={(e) => setFormData({ ...formData, packing_charges: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="other_charges">Other Charges</Label>
+                            <Input
+                              id="other_charges"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={formData.other_charges}
+                              onChange={(e) => setFormData({ ...formData, other_charges: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Order Summary */}
+                        <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Items Total:</span>
+                            <span>₹{calculateTotalWithCharges().itemsTotal.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>GST ({formData.gst_rate}%):</span>
+                            <span>₹{calculateTotalWithCharges().gstAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Freight Charges:</span>
+                            <span>₹{calculateTotalWithCharges().freightCharges.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Packing Charges:</span>
+                            <span>₹{calculateTotalWithCharges().packingCharges.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Other Charges:</span>
+                            <span>₹{calculateTotalWithCharges().otherCharges.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-lg font-bold border-t pt-2">
+                            <span>Grand Total:</span>
+                            <span>₹{calculateTotalWithCharges().grandTotal.toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
