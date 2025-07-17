@@ -11,25 +11,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, Truck, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { OrderTimeline } from "@/components/OrderTimeline";
-import { StatusWorkflow } from "@/components/StatusWorkflow";
 
-const Orders = () => {
+const Purchase = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any>(null);
   const [sortField, setSortField] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
-    so_number: "",
-    customer_id: "",
-    quotation_id: "",
+    po_number: "",
+    supplier_id: "",
     total_amount: "",
     status: "pending",
     order_date: "",
-    delivery_date: "",
+    expected_delivery: "",
     notes: "",
   });
 
@@ -37,18 +34,15 @@ const Orders = () => {
   const queryClient = useQueryClient();
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ["orders", sortField, sortDirection],
+    queryKey: ["purchase-orders", sortField, sortDirection],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sales_orders")
+        .from("purchase_orders")
         .select(`
           *,
-          customers (
+          suppliers (
             name,
             contact_person
-          ),
-          quotations (
-            quotation_number
           )
         `)
         .order(sortField, { ascending: sortDirection === "asc" });
@@ -58,28 +52,14 @@ const Orders = () => {
     },
   });
 
-  const { data: customers } = useQuery({
-    queryKey: ["customers-list"],
+  const { data: suppliers } = useQuery({
+    queryKey: ["suppliers-list"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("customers")
+        .from("suppliers")
         .select("id, name")
         .eq("is_active", true)
         .order("name");
-
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: quotations } = useQuery({
-    queryKey: ["quotations-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("quotations")
-        .select("id, quotation_number, customer_id")
-        .eq("status", "approved")
-        .order("quotation_number");
 
       if (error) throw error;
       return data;
@@ -90,27 +70,27 @@ const Orders = () => {
     mutationFn: async (orderData: any) => {
       if (editingOrder) {
         const { error } = await supabase
-          .from("sales_orders")
+          .from("purchase_orders")
           .update(orderData)
           .eq("id", editingOrder.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("sales_orders").insert([orderData]);
+        const { error } = await supabase.from("purchase_orders").insert([orderData]);
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
       toast({
         title: "Success",
-        description: `Order ${editingOrder ? "updated" : "created"} successfully`,
+        description: `Purchase order ${editingOrder ? "updated" : "created"} successfully`,
       });
       resetForm();
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: `Failed to ${editingOrder ? "update" : "create"} order: ${error.message}`,
+        description: `Failed to ${editingOrder ? "update" : "create"} purchase order: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -118,13 +98,12 @@ const Orders = () => {
 
   const resetForm = () => {
     setFormData({
-      so_number: "",
-      customer_id: "",
-      quotation_id: "",
+      po_number: "",
+      supplier_id: "",
       total_amount: "",
       status: "pending",
       order_date: "",
-      delivery_date: "",
+      expected_delivery: "",
       notes: "",
     });
     setEditingOrder(null);
@@ -136,20 +115,18 @@ const Orders = () => {
     createOrderMutation.mutate({
       ...formData,
       total_amount: parseFloat(formData.total_amount) || 0,
-      quotation_id: formData.quotation_id || null,
     });
   };
 
   const handleEdit = (order: any) => {
     setEditingOrder(order);
     setFormData({
-      so_number: order.so_number || "",
-      customer_id: order.customer_id || "",
-      quotation_id: order.quotation_id || "",
+      po_number: order.po_number || "",
+      supplier_id: order.supplier_id || "",
       total_amount: order.total_amount?.toString() || "",
       status: order.status || "pending",
       order_date: order.order_date || "",
-      delivery_date: order.delivery_date || "",
+      expected_delivery: order.expected_delivery || "",
       notes: order.notes || "",
     });
     setIsDialogOpen(true);
@@ -174,17 +151,13 @@ const Orders = () => {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       pending: "secondary",
-      processing: "outline",
-      shipped: "default",
-      delivered: "default",
+      approved: "outline", 
+      ordered: "default",
+      received: "default",
       cancelled: "destructive",
     };
     return <Badge variant={variants[status] || "secondary"}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
   };
-
-  const filteredQuotations = quotations?.filter(q => 
-    !formData.customer_id || q.customer_id === formData.customer_id
-  );
 
   const toggleRowExpansion = (orderId: string) => {
     const newExpandedRows = new Set(expandedRows);
@@ -197,79 +170,64 @@ const Orders = () => {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Loading orders...</div>;
+    return <div className="flex items-center justify-center h-64">Loading purchase orders...</div>;
   }
 
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Sales Orders</h1>
-          <p className="text-muted-foreground">Manage customer orders and deliveries</p>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Truck className="h-8 w-8" />
+            Purchase Orders
+          </h1>
+          <p className="text-muted-foreground">Manage supplier orders and inventory procurement</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingOrder(null)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Order
+              Add Purchase Order
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>{editingOrder ? "Edit Order" : "Add New Order"}</DialogTitle>
+              <DialogTitle>{editingOrder ? "Edit Purchase Order" : "Add New Purchase Order"}</DialogTitle>
               <DialogDescription>
-                {editingOrder ? "Update order information" : "Create a new sales order"}
+                {editingOrder ? "Update purchase order information" : "Create a new purchase order"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="so_number">Order Number *</Label>
+                  <Label htmlFor="po_number">PO Number *</Label>
                   <Input
-                    id="so_number"
-                    value={formData.so_number}
-                    onChange={(e) => setFormData({ ...formData, so_number: e.target.value })}
+                    id="po_number"
+                    value={formData.po_number}
+                    onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="customer_id">Customer *</Label>
+                  <Label htmlFor="supplier_id">Supplier *</Label>
                   <Select
-                    value={formData.customer_id}
-                    onValueChange={(value) => setFormData({ ...formData, customer_id: value, quotation_id: "" })}
+                    value={formData.supplier_id}
+                    onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
+                      <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
                     <SelectContent>
-                      {customers?.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name}
+                      {suppliers?.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="quotation_id">Quotation (Optional)</Label>
-                  <Select
-                    value={formData.quotation_id}
-                    onValueChange={(value) => setFormData({ ...formData, quotation_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select quotation" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredQuotations?.map((quotation) => (
-                        <SelectItem key={quotation.id} value={quotation.id}>
-                          {quotation.quotation_number}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="total_amount">Total Amount</Label>
                   <Input
@@ -279,26 +237,6 @@ const Orders = () => {
                     value={formData.total_amount}
                     onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
                   />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="processing">Processing</SelectItem>
-                      <SelectItem value="shipped">Shipped</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="order_date">Order Date</Label>
@@ -310,14 +248,32 @@ const Orders = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="delivery_date">Delivery Date</Label>
+                  <Label htmlFor="expected_delivery">Expected Delivery</Label>
                   <Input
-                    id="delivery_date"
+                    id="expected_delivery"
                     type="date"
-                    value={formData.delivery_date}
-                    onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
+                    value={formData.expected_delivery}
+                    onChange={(e) => setFormData({ ...formData, expected_delivery: e.target.value })}
                   />
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="ordered">Ordered</SelectItem>
+                    <SelectItem value="received">Received</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="notes">Notes</Label>
@@ -343,22 +299,24 @@ const Orders = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Orders List</CardTitle>
-          <CardDescription>All sales orders</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Purchase Orders List
+          </CardTitle>
+          <CardDescription>All purchase orders from suppliers</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]"></TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("so_number")}>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("po_number")}>
                   <div className="flex items-center">
-                    Order #
+                    PO #
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Quotation</TableHead>
+                <TableHead>Supplier</TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("total_amount")}>
                   <div className="flex items-center">
                     Amount
@@ -372,7 +330,7 @@ const Orders = () => {
                   </div>
                 </TableHead>
                 <TableHead>Order Date</TableHead>
-                <TableHead>Delivery Date</TableHead>
+                <TableHead>Expected Delivery</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -391,9 +349,8 @@ const Orders = () => {
                         </Button>
                       </CollapsibleTrigger>
                     </TableCell>
-                    <TableCell className="font-medium">{order.so_number}</TableCell>
-                    <TableCell>{order.customers?.name || "-"}</TableCell>
-                    <TableCell>{order.quotations?.quotation_number || "-"}</TableCell>
+                    <TableCell className="font-medium">{order.po_number}</TableCell>
+                    <TableCell>{order.suppliers?.name || "-"}</TableCell>
                     <TableCell>{formatCurrency(order.total_amount)}</TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
                     <TableCell>
@@ -402,8 +359,8 @@ const Orders = () => {
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {order.delivery_date
-                        ? new Date(order.delivery_date).toLocaleDateString()
+                      {order.expected_delivery
+                        ? new Date(order.expected_delivery).toLocaleDateString()
                         : "-"}
                     </TableCell>
                     <TableCell>
@@ -418,54 +375,48 @@ const Orders = () => {
                   </TableRow>
                   <CollapsibleContent asChild>
                     <TableRow>
-                      <TableCell colSpan={9} className="p-0">
+                      <TableCell colSpan={8} className="p-0">
                         <div className="p-6 bg-muted/50 border-t">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                              <div>
-                                <h4 className="font-medium mb-2">Order Details</h4>
-                                <div className="space-y-2 text-sm">
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="font-medium mb-2">Purchase Order Details</h4>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="space-y-2">
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Order Number:</span>
-                                    <span className="font-medium">{order.so_number}</span>
+                                    <span className="text-muted-foreground">PO Number:</span>
+                                    <span className="font-medium">{order.po_number}</span>
                                   </div>
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Customer:</span>
-                                    <span>{order.customers?.name || "-"}</span>
+                                    <span className="text-muted-foreground">Supplier:</span>
+                                    <span>{order.suppliers?.name || "-"}</span>
                                   </div>
                                   <div className="flex justify-between">
                                     <span className="text-muted-foreground">Total Amount:</span>
                                     <span className="font-medium">{formatCurrency(order.total_amount)}</span>
                                   </div>
-                                  {order.quotations?.quotation_number && (
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Quotation:</span>
-                                      <span>{order.quotations.quotation_number}</span>
-                                    </div>
-                                  )}
-                                  {order.notes && (
-                                    <div className="pt-2">
-                                      <span className="text-muted-foreground">Notes:</span>
-                                      <p className="mt-1 text-sm">{order.notes}</p>
-                                    </div>
-                                  )}
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Status:</span>
+                                    <span>{getStatusBadge(order.status)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Order Date:</span>
+                                    <span>{order.order_date ? new Date(order.order_date).toLocaleDateString() : "-"}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Expected Delivery:</span>
+                                    <span>{order.expected_delivery ? new Date(order.expected_delivery).toLocaleDateString() : "-"}</span>
+                                  </div>
                                 </div>
                               </div>
+                              {order.notes && (
+                                <div className="mt-4">
+                                  <span className="text-sm text-muted-foreground">Notes:</span>
+                                  <p className="text-sm mt-1 p-2 bg-background rounded border">{order.notes}</p>
+                                </div>
+                              )}
                             </div>
-                             <div className="space-y-6">
-                               <OrderTimeline 
-                                 status={order.status} 
-                                 orderDate={order.order_date}
-                                 deliveryDate={order.delivery_date}
-                               />
-                               <StatusWorkflow 
-                                 currentStatus={order.status}
-                                 onStatusChange={(newStatus) => {
-                                   // Here you could add a status update mutation
-                                   console.log(`Change status from ${order.status} to ${newStatus}`);
-                                 }}
-                               />
-                             </div>
                           </div>
                         </div>
                       </TableCell>
@@ -481,4 +432,4 @@ const Orders = () => {
   );
 };
 
-export default Orders;
+export default Purchase;
