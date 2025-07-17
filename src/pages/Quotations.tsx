@@ -11,9 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Edit, ArrowUpDown, Download, Eye, Mail, MessageCircle, MapPin, AlertTriangle } from "lucide-react";
+import { Plus, Edit, ArrowUpDown, Download, Eye, Mail, MessageCircle, MapPin, AlertTriangle, Trash2, ChevronDown, Calculator } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Quotations = () => {
@@ -26,6 +26,7 @@ const Quotations = () => {
   const [formData, setFormData] = useState({
     quotation_number: "",
     customer_id: "",
+    concerned_person: "",
     requirement_source: "email",
     total_amount: "",
     tax_amount: "",
@@ -38,6 +39,9 @@ const Quotations = () => {
     payment_terms: "",
     terms_conditions: "",
   });
+  
+  const [quotationItems, setQuotationItems] = useState<any[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -123,6 +127,7 @@ const Quotations = () => {
     setFormData({
       quotation_number: "",
       customer_id: "",
+      concerned_person: "",
       requirement_source: "email",
       total_amount: "",
       tax_amount: "",
@@ -135,26 +140,84 @@ const Quotations = () => {
       payment_terms: "",
       terms_conditions: "",
     });
+    setQuotationItems([]);
+    setShowAdvanced(false);
     setEditingQuotation(null);
     setIsDialogOpen(false);
   };
 
-  const calculateGrandTotal = () => {
-    const total = parseFloat(formData.total_amount) || 0;
-    const tax = parseFloat(formData.tax_amount) || 0;
+  const calculateTotals = () => {
+    // Calculate total from items
+    const itemsTotal = quotationItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    
+    // Calculate tax (18% GST)
+    const tax = itemsTotal * 0.18;
+    
     const handling = parseFloat(formData.handling_charges) || 0;
     const freight = parseFloat(formData.freight_charges) || 0;
     const packing = parseFloat(formData.packing_charges) || 0;
     
-    const grandTotal = total + tax + handling + freight + packing;
-    setFormData(prev => ({ ...prev, grand_total: grandTotal.toString() }));
+    const grandTotal = itemsTotal + tax + handling + freight + packing;
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      total_amount: itemsTotal.toString(),
+      tax_amount: tax.toString(),
+      grand_total: grandTotal.toString() 
+    }));
+  };
+
+  const addQuotationItem = () => {
+    setQuotationItems([...quotationItems, {
+      id: Date.now(),
+      material_id: "",
+      material_name: "",
+      quantity: 1,
+      unit_price: 0,
+      notes: ""
+    }]);
+  };
+
+  const updateQuotationItem = (index: number, field: string, value: any) => {
+    const updatedItems = [...quotationItems];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    
+    // If material is selected, update the name and price
+    if (field === "material_id" && materials) {
+      const material = materials.find(m => m.id === value);
+      if (material) {
+        updatedItems[index].material_name = material.name;
+        updatedItems[index].unit_price = material.base_price || 0;
+      }
+    }
+    
+    setQuotationItems(updatedItems);
+    setTimeout(calculateTotals, 0); // Recalculate totals after state update
+  };
+
+  const removeQuotationItem = (index: number) => {
+    const updatedItems = quotationItems.filter((_, i) => i !== index);
+    setQuotationItems(updatedItems);
+    setTimeout(calculateTotals, 0);
+  };
+
+  const toggleCharge = (chargeType: string, defaultValue: number) => {
+    const currentValue = parseFloat(formData[chargeType as keyof typeof formData] as string) || 0;
+    const newValue = currentValue > 0 ? 0 : defaultValue;
+    setFormData(prev => ({ ...prev, [chargeType]: newValue.toString() }));
+    setTimeout(calculateTotals, 0);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    calculateGrandTotal();
+    calculateTotals();
+    
+    // Generate quotation number if not provided
+    const quotationNumber = formData.quotation_number || `QT-${Date.now()}`;
+    
     createQuotationMutation.mutate({
       ...formData,
+      quotation_number: quotationNumber,
       total_amount: parseFloat(formData.total_amount) || 0,
       tax_amount: parseFloat(formData.tax_amount) || 0,
       handling_charges: parseFloat(formData.handling_charges) || 0,
@@ -169,6 +232,7 @@ const Quotations = () => {
     setFormData({
       quotation_number: quotation.quotation_number || "",
       customer_id: quotation.customer_id || "",
+      concerned_person: quotation.concerned_person || "",
       requirement_source: quotation.requirement_source || "email",
       total_amount: quotation.total_amount?.toString() || "",
       tax_amount: quotation.tax_amount?.toString() || "",
@@ -332,106 +396,224 @@ const Quotations = () => {
               Add Quotation
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingQuotation ? "Edit Quotation" : "Add New Quotation"}</DialogTitle>
+              <DialogTitle>{editingQuotation ? "Edit Quotation" : "Quick Quotation"}</DialogTitle>
               <DialogDescription>
-                {editingQuotation ? "Update quotation information" : "Create a new quotation for a customer"}
+                Fill out the essential details to generate a quotation quickly
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="pricing">Pricing & Charges</TabsTrigger>
-                  <TabsTrigger value="terms">Terms & Products</TabsTrigger>
-                </TabsList>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Essential Fields Section */}
+              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
+                <div>
+                  <Label htmlFor="quotation_number">Quotation Number</Label>
+                  <Input
+                    id="quotation_number"
+                    placeholder="Auto-generated if empty"
+                    value={formData.quotation_number}
+                    onChange={(e) => setFormData({ ...formData, quotation_number: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="customer_id">Customer *</Label>
+                  <Select
+                    value={formData.customer_id}
+                    onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers?.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="concerned_person">Concerned Person</Label>
+                  <Input
+                    id="concerned_person"
+                    placeholder="Contact person name"
+                    value={formData.concerned_person}
+                    onChange={(e) => setFormData({ ...formData, concerned_person: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Source</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Button
+                      type="button"
+                      variant={formData.requirement_source === "email" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setFormData({ ...formData, requirement_source: "email" })}
+                    >
+                      <Mail className="h-3 w-3 mr-1" />Email
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={formData.requirement_source === "whatsapp" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setFormData({ ...formData, requirement_source: "whatsapp" })}
+                    >
+                      <MessageCircle className="h-3 w-3 mr-1" />WhatsApp
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={formData.requirement_source === "walk_in" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setFormData({ ...formData, requirement_source: "walk_in" })}
+                    >
+                      <MapPin className="h-3 w-3 mr-1" />Walk-in
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Products Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Products & Services</Label>
+                  <Button type="button" onClick={addQuotationItem} variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />Add Product
+                  </Button>
+                </div>
                 
-                <TabsContent value="basic" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="quotation_number">Quotation Number *</Label>
-                      <Input
-                        id="quotation_number"
-                        value={formData.quotation_number}
-                        onChange={(e) => setFormData({ ...formData, quotation_number: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="customer_id">Customer *</Label>
-                      <Select
-                        value={formData.customer_id}
-                        onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select customer" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {customers?.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              {customer.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                {quotationItems.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <p>No products added yet. Click "Add Product" to get started.</p>
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    {quotationItems.map((item, index) => (
+                      <div key={item.id} className="grid grid-cols-12 gap-2 p-3 border rounded-lg">
+                        <div className="col-span-4">
+                          <Select
+                            value={item.material_id}
+                            onValueChange={(value) => updateQuotationItem(index, "material_id", value)}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="Select material" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {materials?.map((material) => (
+                                <SelectItem key={material.id} value={material.id}>
+                                  {material.name} ({material.sku})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="number"
+                            placeholder="Qty"
+                            className="h-8"
+                            value={item.quantity}
+                            onChange={(e) => updateQuotationItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="number"
+                            placeholder="Price"
+                            className="h-8"
+                            value={item.unit_price}
+                            onChange={(e) => updateQuotationItem(index, "unit_price", parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <div className="h-8 flex items-center px-2 bg-muted rounded text-sm">
+                            ₹{(item.quantity * item.unit_price).toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-full"
+                            onClick={() => removeQuotationItem(index)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
+              {/* Financial Summary */}
+              <div className="p-4 border rounded-lg bg-muted/20">
+                <div className="flex items-center gap-4 mb-3">
+                  <Label className="text-base font-semibold">Financial Summary</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={parseFloat(formData.tax_amount) > 0 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleCharge("tax_amount", (parseFloat(formData.total_amount) || 0) * 0.18)}
+                    >
+                      GST 18%
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={parseFloat(formData.freight_charges) > 0 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleCharge("freight_charges", 500)}
+                    >
+                      Freight ₹500
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={parseFloat(formData.handling_charges) > 0 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleCharge("handling_charges", 200)}
+                    >
+                      Handling ₹200
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-4 gap-4 text-sm">
                   <div>
-                    <Label>Requirement Received Via</Label>
-                    <div className="flex gap-6 mt-2">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={formData.requirement_source === "email"}
-                          onCheckedChange={() => setFormData({ ...formData, requirement_source: "email" })}
-                        />
-                        <Label className="flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          Email
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={formData.requirement_source === "whatsapp"}
-                          onCheckedChange={() => setFormData({ ...formData, requirement_source: "whatsapp" })}
-                        />
-                        <Label className="flex items-center gap-2">
-                          <MessageCircle className="h-4 w-4" />
-                          WhatsApp
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={formData.requirement_source === "walk_in"}
-                          onCheckedChange={() => setFormData({ ...formData, requirement_source: "walk_in" })}
-                        />
-                        <Label className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          Walk-in
-                        </Label>
-                      </div>
+                    <Label className="text-xs text-muted-foreground">Base Amount</Label>
+                    <div className="font-semibold">₹{parseFloat(formData.total_amount || "0").toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Tax (GST)</Label>
+                    <div className="font-semibold">₹{parseFloat(formData.tax_amount || "0").toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Other Charges</Label>
+                    <div className="font-semibold">
+                      ₹{((parseFloat(formData.handling_charges || "0")) + 
+                          (parseFloat(formData.freight_charges || "0")) + 
+                          (parseFloat(formData.packing_charges || "0"))).toLocaleString()}
                     </div>
                   </div>
+                  <div className="bg-primary/10 p-2 rounded">
+                    <Label className="text-xs text-muted-foreground">Grand Total</Label>
+                    <div className="font-bold text-lg">₹{parseFloat(formData.grand_total || "0").toLocaleString()}</div>
+                  </div>
+                </div>
+              </div>
 
+              {/* Advanced Options (Collapsible) */}
+              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" className="w-full justify-between">
+                    <span>Advanced Options</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 pt-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="status">Status</Label>
-                      <Select
-                        value={formData.status}
-                        onValueChange={(value) => setFormData({ ...formData, status: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="sent">Sent</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div>
                       <Label htmlFor="valid_until">Valid Until</Label>
                       <Input
@@ -441,136 +623,95 @@ const Quotations = () => {
                         onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
                       />
                     </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="pricing" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="total_amount">Base Amount</Label>
-                      <Input
-                        id="total_amount"
-                        type="number"
-                        step="0.01"
-                        value={formData.total_amount}
-                        onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="tax_amount">GST Amount</Label>
-                      <Input
-                        id="tax_amount"
-                        type="number"
-                        step="0.01"
-                        value={formData.tax_amount}
-                        onChange={(e) => setFormData({ ...formData, tax_amount: e.target.value })}
-                      />
+                      <Label htmlFor="payment_terms">Payment Terms</Label>
+                      <Select
+                        value={formData.payment_terms}
+                        onValueChange={(value) => setFormData({ ...formData, payment_terms: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select terms" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="net_30">Net 30 days</SelectItem>
+                          <SelectItem value="net_15">Net 15 days</SelectItem>
+                          <SelectItem value="advance">100% Advance</SelectItem>
+                          <SelectItem value="50_50">50% Advance, 50% on delivery</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-
+                  
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="handling_charges">Handling Charges</Label>
+                      <Label htmlFor="handling_charges">Handling</Label>
                       <Input
                         id="handling_charges"
                         type="number"
-                        step="0.01"
+                        placeholder="0"
                         value={formData.handling_charges}
-                        onChange={(e) => setFormData({ ...formData, handling_charges: e.target.value })}
+                        onChange={(e) => { 
+                          setFormData({ ...formData, handling_charges: e.target.value });
+                          setTimeout(calculateTotals, 0);
+                        }}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="freight_charges">Freight Charges</Label>
+                      <Label htmlFor="freight_charges">Freight</Label>
                       <Input
                         id="freight_charges"
                         type="number"
-                        step="0.01"
+                        placeholder="0"
                         value={formData.freight_charges}
-                        onChange={(e) => setFormData({ ...formData, freight_charges: e.target.value })}
+                        onChange={(e) => { 
+                          setFormData({ ...formData, freight_charges: e.target.value });
+                          setTimeout(calculateTotals, 0);
+                        }}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="packing_charges">Packing Charges</Label>
+                      <Label htmlFor="packing_charges">Packing</Label>
                       <Input
                         id="packing_charges"
                         type="number"
-                        step="0.01"
+                        placeholder="0"
                         value={formData.packing_charges}
-                        onChange={(e) => setFormData({ ...formData, packing_charges: e.target.value })}
+                        onChange={(e) => { 
+                          setFormData({ ...formData, packing_charges: e.target.value });
+                          setTimeout(calculateTotals, 0);
+                        }}
                       />
                     </div>
                   </div>
-
-                  <div>
-                    <Label htmlFor="grand_total">Grand Total</Label>
-                    <Input
-                      id="grand_total"
-                      type="number"
-                      step="0.01"
-                      value={formData.grand_total}
-                      onChange={(e) => setFormData({ ...formData, grand_total: e.target.value })}
-                    />
-                    <Button type="button" className="mt-2" onClick={calculateGrandTotal}>
-                      Calculate Total
-                    </Button>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="terms" className="space-y-4">
-                  <div>
-                    <Label htmlFor="payment_terms">Payment Terms</Label>
-                    <Select
-                      value={formData.payment_terms}
-                      onValueChange={(value) => setFormData({ ...formData, payment_terms: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select payment terms" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Net 15 days">Net 15 days</SelectItem>
-                        <SelectItem value="Net 30 days">Net 30 days</SelectItem>
-                        <SelectItem value="Net 45 days">Net 45 days</SelectItem>
-                        <SelectItem value="Net 60 days">Net 60 days</SelectItem>
-                        <SelectItem value="Advance payment">Advance payment</SelectItem>
-                        <SelectItem value="50% advance, 50% on delivery">50% advance, 50% on delivery</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
+                  
                   <div>
                     <Label htmlFor="terms_conditions">Terms & Conditions</Label>
                     <Textarea
                       id="terms_conditions"
+                      placeholder="Standard terms and conditions apply..."
                       value={formData.terms_conditions}
                       onChange={(e) => setFormData({ ...formData, terms_conditions: e.target.value })}
-                      rows={4}
-                      placeholder="Enter terms and conditions..."
+                      rows={3}
                     />
                   </div>
+                </CollapsibleContent>
+              </Collapsible>
 
-                  <div className="bg-muted p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Available Materials (for reference)</h4>
-                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
-                      {materials?.slice(0, 10).map((material) => (
-                        <div key={material.id} className="text-sm">
-                          <span className="font-medium">{material.name}</span> ({material.sku})
-                          {material.base_price && <span className="text-muted-foreground"> - {formatCurrency(material.base_price)}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              <Separator />
-              
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createQuotationMutation.isPending}>
-                  {createQuotationMutation.isPending ? "Saving..." : editingQuotation ? "Update" : "Create"}
-                </Button>
+              {/* Action Buttons */}
+              <div className="flex justify-between pt-4">
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsPreviewOpen(true)}>
+                    <Eye className="h-4 w-4 mr-1" />Preview
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={resetForm}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createQuotationMutation.isPending}>
+                    {createQuotationMutation.isPending ? "Saving..." : editingQuotation ? "Update" : "Create"} Quotation
+                  </Button>
+                </div>
               </div>
             </form>
           </DialogContent>
