@@ -318,11 +318,20 @@ export type Database = {
       }
       quotations: {
         Row: {
+          company_address: string | null
+          company_email: string | null
+          company_name: string | null
+          company_phone: string | null
           created_at: string
           customer_id: string
+          freight_charges: number | null
           grand_total: number
+          handling_charges: number | null
           id: string
+          packing_charges: number | null
+          payment_terms: string | null
           quotation_number: string
+          requirement_source: string | null
           status: string
           tax_amount: number
           terms_conditions: string | null
@@ -331,11 +340,20 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           customer_id: string
+          freight_charges?: number | null
           grand_total?: number
+          handling_charges?: number | null
           id?: string
+          packing_charges?: number | null
+          payment_terms?: string | null
           quotation_number: string
+          requirement_source?: string | null
           status?: string
           tax_amount?: number
           terms_conditions?: string | null
@@ -344,11 +362,20 @@ export type Database = {
           valid_until?: string | null
         }
         Update: {
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           customer_id?: string
+          freight_charges?: number | null
           grand_total?: number
+          handling_charges?: number | null
           id?: string
+          packing_charges?: number | null
+          payment_terms?: string | null
           quotation_number?: string
+          requirement_source?: string | null
           status?: string
           tax_amount?: number
           terms_conditions?: string | null
