@@ -710,14 +710,27 @@ const Quotations = () => {
                   const availableStock = selectedMaterial ? getAvailableStock(selectedMaterial.id) : 0;
                   
                   return (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
-                      <div>
-                        <Label>Material</Label>
+                    <div key={index} className="border rounded-lg p-4 space-y-4 bg-card">
+                      {/* Material Selection Section */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Material Selection</Label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeQuotationItem(index)}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
                         <Select
                           value={item.material_id}
                           onValueChange={(value) => updateQuotationItem(index, "material_id", value)}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select material" />
                           </SelectTrigger>
                           <SelectContent>
@@ -726,13 +739,19 @@ const Quotations = () => {
                               const materialStock = getAvailableStock(material.id);
                               return (
                                 <SelectItem key={material.id} value={material.id}>
-                                  <div className="flex flex-col">
-                                    <div>{material.name} ({material.sku})</div>
-                                    <div className="flex items-center gap-2 text-xs">
-                                      <Badge variant={materialStockStatus.color as any} className="text-xs">
-                                        {materialStock} units
-                                      </Badge>
-                                      <span className="text-muted-foreground">{materialStockStatus.text}</span>
+                                  <div className="flex flex-col py-1 w-full">
+                                    <div className="font-medium text-sm">{material.name}</div>
+                                    <div className="flex items-center justify-between mt-1">
+                                      <span className="text-xs text-muted-foreground">SKU: {material.sku}</span>
+                                      <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        materialStockStatus.color === 'success' 
+                                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                                          : materialStockStatus.color === 'warning' 
+                                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' 
+                                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                      }`}>
+                                        {materialStock} units • {materialStockStatus.text}
+                                      </div>
                                     </div>
                                   </div>
                                 </SelectItem>
@@ -740,68 +759,68 @@ const Quotations = () => {
                             })}
                           </SelectContent>
                         </Select>
+                        
+                        {/* Selected Material Info Card */}
                         {selectedMaterial && (
-                          <div className="mt-2 space-y-1">
-                            <div className="text-xs text-muted-foreground">
-                              SKU: {selectedMaterial.sku}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge 
-                                variant={stockStatus?.color as any} 
-                                className="text-xs"
-                              >
-                                Stock: {availableStock} units
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {stockStatus?.text}
-                              </span>
+                          <div className="bg-muted/50 rounded-md p-3 border">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="text-sm font-medium">{selectedMaterial.name}</div>
+                                <div className="text-xs text-muted-foreground">SKU: {selectedMaterial.sku}</div>
+                              </div>
+                              <div className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1 ${
+                                stockStatus?.color === 'success' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                                  : stockStatus?.color === 'warning' 
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' 
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                                <div className={`w-2 h-2 rounded-full ${
+                                  stockStatus?.color === 'success' ? 'bg-green-600' : 
+                                  stockStatus?.color === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
+                                }`} />
+                                {availableStock} available
+                              </div>
                             </div>
                           </div>
                         )}
                       </div>
 
-                    <div>
-                      <Label>Quantity</Label>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateQuotationItem(index, "quantity", e.target.value)}
-                        placeholder="0"
-                      />
-                    </div>
+                      {/* Quantity and Pricing Section */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Quantity</Label>
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => updateQuotationItem(index, "quantity", e.target.value)}
+                            placeholder="0"
+                            className="h-10"
+                          />
+                        </div>
 
-                    <div>
-                      <Label>Unit Price</Label>
-                      <Input
-                        type="number"
-                        value={item.unit_price}
-                        onChange={(e) => updateQuotationItem(index, "unit_price", e.target.value)}
-                        placeholder="0.00"
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Unit Price</Label>
+                          <Input
+                            type="number"
+                            value={item.unit_price}
+                            onChange={(e) => updateQuotationItem(index, "unit_price", e.target.value)}
+                            placeholder="0.00"
+                            className="h-10"
+                          />
+                        </div>
 
-                    <div>
-                      <Label>Line Total</Label>
-                      <Input
-                        type="number"
-                        value={item.line_total}
-                        readOnly
-                        className="bg-muted"
-                      />
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Line Total</Label>
+                          <Input
+                            type="number"
+                            value={item.line_total}
+                            readOnly
+                            className="bg-muted h-10 font-medium"
+                          />
+                        </div>
+                      </div>
                     </div>
-
-                    <div className="flex items-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeQuotationItem(index)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
                   );
                 })}
               </div>
