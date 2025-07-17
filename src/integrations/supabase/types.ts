@@ -221,6 +221,48 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          linked_sales_order_id: string | null
+          material_id: string
+          notes: string | null
+          order_type: string
+          purchase_order_id: string
+          quantity: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          linked_sales_order_id?: string | null
+          material_id: string
+          notes?: string | null
+          order_type?: string
+          purchase_order_id: string
+          quantity?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          linked_sales_order_id?: string | null
+          material_id?: string
+          notes?: string | null
+          order_type?: string
+          purchase_order_id?: string
+          quantity?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       purchase_orders: {
         Row: {
           created_at: string
@@ -439,6 +481,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sales_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          material_id: string
+          notes: string | null
+          quantity: number
+          quotation_item_id: string | null
+          sales_order_id: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          material_id: string
+          notes?: string | null
+          quantity?: number
+          quotation_item_id?: string | null
+          sales_order_id: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          material_id?: string
+          notes?: string | null
+          quantity?: number
+          quotation_item_id?: string | null
+          sales_order_id?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       sales_orders: {
         Row: {

@@ -11,8 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, Truck, Package } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, Truck, Package, X, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 const Purchase = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -20,6 +22,9 @@ const Purchase = () => {
   const [sortField, setSortField] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showProductModal, setShowProductModal] = useState(false);
   const [formData, setFormData] = useState({
     po_number: "",
     supplier_id: "",
@@ -66,17 +71,94 @@ const Purchase = () => {
     },
   });
 
+  const { data: materials } = useQuery({
+    queryKey: ["materials-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("materials")
+        .select(`
+          id, name, sku, unit, base_price, category, grade,
+          inventory (
+            quantity,
+            available_quantity
+          )
+        `)
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: salesOrders } = useQuery({
+    queryKey: ["sales-orders-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales_orders")
+        .select(`
+          id, so_number,
+          customers (
+            name
+          )
+        `)
+        .eq("status", "pending")
+        .order("so_number");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const filteredMaterials = materials?.filter(material =>
+    material.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    material.sku.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
+      const totalAmount = orderItems.reduce((sum, item) => sum + item.line_total, 0);
+      const orderWithTotal = { ...orderData, total_amount: totalAmount };
+
       if (editingOrder) {
         const { error } = await supabase
           .from("purchase_orders")
-          .update(orderData)
+          .update(orderWithTotal)
           .eq("id", editingOrder.id);
         if (error) throw error;
+
+        // Update order items
+        await supabase
+          .from("purchase_order_items")
+          .delete()
+          .eq("purchase_order_id", editingOrder.id);
+
+        const itemsWithOrderId = orderItems.map(item => ({
+          ...item,
+          purchase_order_id: editingOrder.id
+        }));
+        
+        const { error: itemsError } = await supabase
+          .from("purchase_order_items")
+          .insert(itemsWithOrderId);
+        if (itemsError) throw itemsError;
       } else {
-        const { error } = await supabase.from("purchase_orders").insert([orderData]);
+        const { data: newOrder, error } = await supabase
+          .from("purchase_orders")
+          .insert([orderWithTotal])
+          .select()
+          .single();
         if (error) throw error;
+
+        const itemsWithOrderId = orderItems.map(item => ({
+          ...item,
+          purchase_order_id: newOrder.id
+        }));
+        
+        const { error: itemsError } = await supabase
+          .from("purchase_order_items")
+          .insert(itemsWithOrderId);
+        if (itemsError) throw itemsError;
       }
     },
     onSuccess: () => {
@@ -106,16 +188,23 @@ const Purchase = () => {
       expected_delivery: "",
       notes: "",
     });
+    setOrderItems([]);
+    setSearchQuery("");
     setEditingOrder(null);
     setIsDialogOpen(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createOrderMutation.mutate({
-      ...formData,
-      total_amount: parseFloat(formData.total_amount) || 0,
-    });
+    if (orderItems.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one item to the order",
+        variant: "destructive",
+      });
+      return;
+    }
+    createOrderMutation.mutate(formData);
   };
 
   const handleEdit = (order: any) => {
@@ -169,6 +258,64 @@ const Purchase = () => {
     setExpandedRows(newExpandedRows);
   };
 
+  const addMaterialToOrder = (material: any) => {
+    const existingItem = orderItems.find(item => item.material_id === material.id);
+    if (existingItem) {
+      toast({
+        title: "Material already added",
+        description: "This material is already in the order",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newItem = {
+      material_id: material.id,
+      material_name: material.name,
+      material_sku: material.sku,
+      quantity: 1,
+      unit_price: material.base_price || 0,
+      line_total: material.base_price || 0,
+      order_type: "stock",
+      linked_sales_order_id: null,
+      notes: "",
+    };
+
+    setOrderItems([...orderItems, newItem]);
+    setSearchQuery("");
+  };
+
+  const updateOrderItem = (index: number, field: string, value: any) => {
+    const updatedItems = [...orderItems];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    
+    if (field === "quantity" || field === "unit_price") {
+      updatedItems[index].line_total = updatedItems[index].quantity * updatedItems[index].unit_price;
+    }
+    
+    setOrderItems(updatedItems);
+  };
+
+  const removeOrderItem = (index: number) => {
+    setOrderItems(orderItems.filter((_, i) => i !== index));
+  };
+
+  const getTotalAmount = () => {
+    return orderItems.reduce((sum, item) => sum + item.line_total, 0);
+  };
+
+  const getStockInfo = (material: any) => {
+    const totalStock = material.inventory?.reduce((sum: number, inv: any) => sum + (inv.available_quantity || 0), 0) || 0;
+    
+    if (totalStock === 0) {
+      return { status: "out-of-stock", text: "Out of Stock", color: "bg-destructive/10 text-destructive" };
+    } else if (totalStock < 10) {
+      return { status: "low-stock", text: `Low Stock (${totalStock})`, color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400" };
+    } else {
+      return { status: "in-stock", text: `In Stock (${totalStock})`, color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400" };
+    }
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading purchase orders...</div>;
   }
@@ -190,110 +337,301 @@ const Purchase = () => {
               Add Purchase Order
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingOrder ? "Edit Purchase Order" : "Add New Purchase Order"}</DialogTitle>
-              <DialogDescription>
-                {editingOrder ? "Update purchase order information" : "Create a new purchase order"}
+              <DialogTitle className="text-center">
+                {editingOrder ? "Edit Purchase Order" : "Create Purchase Order"}
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                {editingOrder ? "Update purchase order information and items" : "Create a new purchase order with line items"}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="po_number">PO Number *</Label>
-                  <Input
-                    id="po_number"
-                    value={formData.po_number}
-                    onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="supplier_id">Supplier *</Label>
-                  <Select
-                    value={formData.supplier_id}
-                    onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers?.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
-                        </SelectItem>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Header Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Order Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="po_number">PO Number *</Label>
+                      <Input
+                        id="po_number"
+                        value={formData.po_number}
+                        onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="supplier_id">Supplier *</Label>
+                      <Select
+                        value={formData.supplier_id}
+                        onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select supplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {suppliers?.map((supplier) => (
+                            <SelectItem key={supplier.id} value={supplier.id}>
+                              {supplier.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="order_date">Order Date</Label>
+                      <Input
+                        id="order_date"
+                        type="date"
+                        value={formData.order_date}
+                        onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="expected_delivery">Expected Delivery</Label>
+                      <Input
+                        id="expected_delivery"
+                        type="date"
+                        value={formData.expected_delivery}
+                        onChange={(e) => setFormData({ ...formData, expected_delivery: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="status">Status</Label>
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value) => setFormData({ ...formData, status: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="ordered">Ordered</SelectItem>
+                          <SelectItem value="received">Received</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Order Items */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Order Items</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Add Items Section */}
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Search materials by name or SKU..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={() => setShowProductModal(true)}
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Browse
+                      </Button>
+                    </div>
+
+                    {/* Search Results */}
+                    {searchQuery && filteredMaterials && filteredMaterials.length > 0 && (
+                      <div className="border rounded-lg max-h-48 overflow-y-auto">
+                        {filteredMaterials.slice(0, 5).map((material) => {
+                          const stockInfo = getStockInfo(material);
+                          return (
+                            <div
+                              key={material.id}
+                              className="p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 transition-colors"
+                              onClick={() => addMaterialToOrder(material)}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="font-medium">{material.name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    SKU: {material.sku} • {material.unit}
+                                  </div>
+                                </div>
+                                <div className="text-right space-y-1">
+                                  <div className="font-medium">₹{material.base_price || 0}</div>
+                                  <Badge className={stockInfo.color}>
+                                    {stockInfo.text}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Order Items List */}
+                  {orderItems.length > 0 && (
+                    <div className="space-y-3">
+                      {orderItems.map((item, index) => (
+                        <Card key={index} className="border-l-4 border-l-primary">
+                          <CardContent className="p-4">
+                            <div className="space-y-4">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <div className="font-medium">{item.material_name}</div>
+                                  <div className="text-sm text-muted-foreground">SKU: {item.material_sku}</div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeOrderItem(index)}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <Label>Quantity</Label>
+                                  <Input
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    value={item.quantity}
+                                    onChange={(e) => updateOrderItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Unit Price</Label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={item.unit_price}
+                                    onChange={(e) => updateOrderItem(index, "unit_price", parseFloat(e.target.value) || 0)}
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Line Total</Label>
+                                  <Input
+                                    value={`₹${item.line_total.toFixed(2)}`}
+                                    disabled
+                                    className="bg-muted"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div>
+                                  <Label className="text-sm font-medium mb-2 block">Order Type</Label>
+                                  <RadioGroup
+                                    value={item.order_type}
+                                    onValueChange={(value) => updateOrderItem(index, "order_type", value)}
+                                    className="flex gap-6"
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <RadioGroupItem value="stock" id={`stock-${index}`} />
+                                      <Label htmlFor={`stock-${index}`} className="text-sm">For Stock</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <RadioGroupItem value="customer_order" id={`customer-${index}`} />
+                                      <Label htmlFor={`customer-${index}`} className="text-sm">Against Customer Order</Label>
+                                    </div>
+                                  </RadioGroup>
+                                </div>
+
+                                {item.order_type === "customer_order" && (
+                                  <div>
+                                    <Label>Link to Sales Order</Label>
+                                    <Select
+                                      value={item.linked_sales_order_id || ""}
+                                      onValueChange={(value) => updateOrderItem(index, "linked_sales_order_id", value || null)}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select sales order" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {salesOrders?.map((order) => (
+                                          <SelectItem key={order.id} value={order.id}>
+                                            {order.so_number} - {order.customers?.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+
+                                <div>
+                                  <Label>Notes</Label>
+                                  <Input
+                                    value={item.notes}
+                                    onChange={(e) => updateOrderItem(index, "notes", e.target.value)}
+                                    placeholder="Optional notes for this item"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="total_amount">Total Amount</Label>
-                  <Input
-                    id="total_amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.total_amount}
-                    onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="order_date">Order Date</Label>
-                  <Input
-                    id="order_date"
-                    type="date"
-                    value={formData.order_date}
-                    onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="expected_delivery">Expected Delivery</Label>
-                  <Input
-                    id="expected_delivery"
-                    type="date"
-                    value={formData.expected_delivery}
-                    onChange={(e) => setFormData({ ...formData, expected_delivery: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => setFormData({ ...formData, status: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="ordered">Ordered</SelectItem>
-                    <SelectItem value="received">Received</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
-                />
-              </div>
+
+                      <div className="flex justify-end pt-4 border-t">
+                        <div className="text-xl font-bold">
+                          Total: ₹{getTotalAmount().toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {orderItems.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No items added. Search and add materials above.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={resetForm}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createOrderMutation.isPending}>
-                  {createOrderMutation.isPending ? "Saving..." : editingOrder ? "Update" : "Create"}
+                <Button type="submit" disabled={createOrderMutation.isPending || orderItems.length === 0}>
+                  {createOrderMutation.isPending ? "Saving..." : editingOrder ? "Update Order" : "Create Order"}
                 </Button>
               </div>
             </form>
           </DialogContent>
+
+          <ProductSelectionModal
+            open={showProductModal}
+            onOpenChange={setShowProductModal}
+            onSelectMaterial={addMaterialToOrder}
+            materials={materials || []}
+          />
         </Dialog>
       </div>
 
