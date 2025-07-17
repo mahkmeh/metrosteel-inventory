@@ -124,6 +124,33 @@ const Quotations = () => {
     },
   });
 
+  // Fetch inventory data for stock availability
+  const { data: inventory } = useQuery({
+    queryKey: ["inventory-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("material_id, quantity, reserved_quantity");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Calculate available stock for each material
+  const getAvailableStock = (materialId: string) => {
+    const inventoryItem = inventory?.find(item => item.material_id === materialId);
+    if (!inventoryItem) return 0;
+    return (inventoryItem.quantity || 0) - (inventoryItem.reserved_quantity || 0);
+  };
+
+  const getStockStatus = (materialId: string) => {
+    const stock = getAvailableStock(materialId);
+    if (stock <= 0) return { status: 'out', color: 'destructive', text: 'Out of Stock' };
+    if (stock <= 10) return { status: 'low', color: 'warning', text: 'Low Stock' };
+    return { status: 'good', color: 'success', text: 'In Stock' };
+  };
+
   // Advanced filtering with search across multiple fields
   const filteredQuotations = useMemo(() => {
     if (!quotations) return [];
@@ -162,6 +189,19 @@ const Quotations = () => {
     material.sku.toLowerCase().includes(productSearch.toLowerCase()) ||
     (material.batch_no && material.batch_no.toLowerCase().includes(productSearch.toLowerCase()))
   ) || [];
+
+  // Quick add product from search
+  const handleQuickAddProduct = (material: any) => {
+    const newItem = {
+      material_id: material.id,
+      quantity: "1",
+      unit_price: material.base_price?.toString() || "0",
+      line_total: material.base_price?.toString() || "0",
+      notes: ""
+    };
+    setQuotationItems([...quotationItems, newItem]);
+    setProductSearch("");
+  };
 
   const createQuotationMutation = useMutation({
     mutationFn: async (quotationData: any) => {
@@ -442,15 +482,15 @@ const Quotations = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header with Title and Add Button */}
-      <div className="flex justify-between items-center">
+      {/* Header with Title and Centered Add Button */}
+      <div className="text-center space-y-4">
         <div>
           <h1 className="text-3xl font-bold">Quotations</h1>
           <p className="text-muted-foreground">Manage customer quotations and proposals</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingQuotation(null)}>
+            <Button size="lg" className="mx-auto" onClick={() => setEditingQuotation(null)}>
               <Plus className="h-4 w-4 mr-2" />
               Create Quotation
             </Button>
@@ -607,26 +647,118 @@ const Quotations = () => {
                   </div>
                 </div>
 
-                {quotationItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
-                    <div>
-                      <Label>Material</Label>
-                      <Select
-                        value={item.material_id}
-                        onValueChange={(value) => updateQuotationItem(index, "material_id", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select material" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {materials?.map((material) => (
-                            <SelectItem key={material.id} value={material.id}>
-                              {material.name} ({material.sku})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                {/* Quick Product Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Quick add: Type product name or SKU and press Enter..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && filteredMaterials.length > 0) {
+                        e.preventDefault();
+                        handleQuickAddProduct(filteredMaterials[0]);
+                      }
+                    }}
+                    className="pl-10"
+                  />
+                  {productSearch && filteredMaterials.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredMaterials.slice(0, 5).map((material) => {
+                        const stockStatus = getStockStatus(material.id);
+                        const availableStock = getAvailableStock(material.id);
+                        return (
+                          <div
+                            key={material.id}
+                            className="p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                            onClick={() => handleQuickAddProduct(material)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="font-medium text-sm">{material.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  SKU: {material.sku} | {material.category} - {material.grade}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant={stockStatus.color as any} className="text-xs">
+                                    {stockStatus.text}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    Stock: {availableStock} units
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-sm font-semibold">
+                                ₹{material.base_price?.toLocaleString() || 0}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {filteredMaterials.length > 5 && (
+                        <div className="p-2 text-center text-xs text-muted-foreground border-t">
+                          {filteredMaterials.length - 5} more products available...
+                        </div>
+                      )}
                     </div>
+                  )}
+                </div>
+
+                {quotationItems.map((item, index) => {
+                  const selectedMaterial = materials?.find(m => m.id === item.material_id);
+                  const stockStatus = selectedMaterial ? getStockStatus(selectedMaterial.id) : null;
+                  const availableStock = selectedMaterial ? getAvailableStock(selectedMaterial.id) : 0;
+                  
+                  return (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
+                      <div>
+                        <Label>Material</Label>
+                        <Select
+                          value={item.material_id}
+                          onValueChange={(value) => updateQuotationItem(index, "material_id", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select material" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {materials?.map((material) => {
+                              const materialStockStatus = getStockStatus(material.id);
+                              const materialStock = getAvailableStock(material.id);
+                              return (
+                                <SelectItem key={material.id} value={material.id}>
+                                  <div className="flex flex-col">
+                                    <div>{material.name} ({material.sku})</div>
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <Badge variant={materialStockStatus.color as any} className="text-xs">
+                                        {materialStock} units
+                                      </Badge>
+                                      <span className="text-muted-foreground">{materialStockStatus.text}</span>
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        {selectedMaterial && (
+                          <div className="mt-2 space-y-1">
+                            <div className="text-xs text-muted-foreground">
+                              SKU: {selectedMaterial.sku}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant={stockStatus?.color as any} 
+                                className="text-xs"
+                              >
+                                Stock: {availableStock} units
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {stockStatus?.text}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
                     <div>
                       <Label>Quantity</Label>
@@ -670,7 +802,8 @@ const Quotations = () => {
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Charges Section */}
