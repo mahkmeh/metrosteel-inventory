@@ -199,7 +199,7 @@ const Customers = () => {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Company Name *</Label>
                   <Input
@@ -207,6 +207,7 @@ const Customers = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
+                    className="h-12"
                   />
                 </div>
                 <div>
@@ -215,10 +216,11 @@ const Customers = () => {
                     id="contact_person"
                     value={formData.contact_person}
                     onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                    className="h-12"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -226,6 +228,7 @@ const Customers = () => {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="h-12"
                   />
                 </div>
                 <div>
@@ -234,6 +237,7 @@ const Customers = () => {
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="h-12"
                   />
                 </div>
               </div>
@@ -246,7 +250,7 @@ const Customers = () => {
                   rows={3}
                 />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="gst_number">GST Number</Label>
                   <Input
@@ -287,69 +291,116 @@ const Customers = () => {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer List</CardTitle>
-          <CardDescription>All registered customers</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                  <div className="flex items-center">
-                    Company Name
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("contact_person")}>
-                  <div className="flex items-center">
-                    Contact Person
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("credit_limit")}>
-                  <div className="flex items-center">
-                    Credit Limit
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead>Credit Days</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <Card>
+          <CardHeader>
+            <CardTitle>Customer List</CardTitle>
+            <CardDescription>All registered customers</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 md:p-6">
+            {/* Mobile Card View */}
+            <div className="block md:hidden">
               {customers?.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell>{customer.contact_person || "-"}</TableCell>
-                  <TableCell>{customer.email || "-"}</TableCell>
-                  <TableCell>{customer.phone || "-"}</TableCell>
-                  <TableCell>{formatCurrency(customer.credit_limit || 0)}</TableCell>
-                  <TableCell>{customer.credit_days || 0} days</TableCell>
-                  <TableCell>
-                    <Badge variant={customer.is_active ? "default" : "secondary"}>
-                      {customer.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(customer)}
-                    >
+                <div key={customer.id} className="p-4 border-b last:border-b-0">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-semibold text-base">{customer.name}</div>
+                      <div className="text-sm text-muted-foreground">{customer.contact_person || "-"}</div>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={customer.is_active ? "default" : "secondary"}>
+                        {customer.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                      <span className="text-muted-foreground">Email: </span>
+                      {customer.email || "-"}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Phone: </span>
+                      {customer.phone || "-"}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Credit: </span>
+                      {formatCurrency(customer.credit_limit || 0)}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Days: </span>
+                      {customer.credit_days || 0} days
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(customer)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
+                      <div className="flex items-center">
+                        Company Name
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("contact_person")}>
+                      <div className="flex items-center">
+                        Contact Person
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("credit_limit")}>
+                      <div className="flex items-center">
+                        Credit Limit
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead>Credit Days</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {customers?.map((customer) => (
+                    <TableRow key={customer.id}>
+                      <TableCell className="font-medium">{customer.name}</TableCell>
+                      <TableCell>{customer.contact_person || "-"}</TableCell>
+                      <TableCell>{customer.email || "-"}</TableCell>
+                      <TableCell>{customer.phone || "-"}</TableCell>
+                      <TableCell>{formatCurrency(customer.credit_limit || 0)}</TableCell>
+                      <TableCell>{customer.credit_days || 0} days</TableCell>
+                      <TableCell>
+                        <Badge variant={customer.is_active ? "default" : "secondary"}>
+                          {customer.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(customer)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
     </div>
   );
 };

@@ -668,8 +668,85 @@ const Sales = () => {
           <CardTitle>Orders List</CardTitle>
           <CardDescription>All sales orders</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="p-0 md:p-6">
+          {/* Mobile Card View */}
+          <div className="block md:hidden">
+            {orders?.map((order) => (
+              <div key={order.id} className="border-b last:border-b-0">
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-semibold text-base">{order.so_number}</div>
+                      <div className="text-sm text-muted-foreground">{order.customers?.name || "-"}</div>
+                      {order.quotations?.quotation_number && (
+                        <div className="text-xs text-muted-foreground">
+                          Ref: {order.quotations.quotation_number}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold">{formatCurrency(order.total_amount || 0)}</div>
+                      {getStatusBadge(order.status)}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                      <span className="text-muted-foreground">Order: </span>
+                      {order.order_date ? new Date(order.order_date).toLocaleDateString() : "-"}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Delivery: </span>
+                      {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : "-"}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleRowExpansion(order.id)}
+                      className="p-2"
+                    >
+                      {expandedRows.has(order.id) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      <span className="ml-1 text-xs">Details</span>
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(order)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Collapsible content for mobile */}
+                <Collapsible open={expandedRows.has(order.id)} onOpenChange={() => toggleRowExpansion(order.id)}>
+                  <CollapsibleContent className="px-4 pb-4 bg-muted/30 space-y-4">
+                    <div className="p-3 bg-background rounded-lg">
+                      <h4 className="font-semibold mb-2">Order Timeline</h4>
+                      <p className="text-sm text-muted-foreground">Order tracking coming soon...</p>
+                    </div>
+                    <div className="p-3 bg-background rounded-lg">
+                      <h4 className="font-semibold mb-2">Status: {order.status}</h4>
+                      <p className="text-sm text-muted-foreground">Status workflow coming soon...</p>
+                    </div>
+                    {order.notes && (
+                      <div className="p-3 bg-background rounded-lg">
+                        <Label className="text-sm font-medium">Notes:</Label>
+                        <p className="text-sm text-muted-foreground mt-1">{order.notes}</p>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]"></TableHead>
@@ -796,7 +873,8 @@ const Sales = () => {
                 </Collapsible>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
