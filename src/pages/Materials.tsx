@@ -238,16 +238,40 @@ const Materials = () => {
   };
 
   const handleSubmit = () => {
-    const materialData = {
-      ...formData,
+    const materialData: any = {
+      name: formData.name,
+      category: formData.category,
+      grade: formData.grade,
+      sku: formData.sku,
+      make: formData.make || null,
+      unit: formData.unit || "KG",
+      description: formData.description || null,
       thickness: formData.thickness ? parseFloat(formData.thickness) : null,
       width: formData.width ? parseFloat(formData.width) : null,
       length: formData.length ? parseFloat(formData.length) : null,
       diameter: formData.diameter ? parseFloat(formData.diameter) : null,
       base_price: formData.base_price ? parseFloat(formData.base_price) : null,
+      batch_no: formData.batch_no || null,
+      heat_number: formData.heat_number || null,
       no_of_sheets: formData.no_of_sheets ? parseInt(formData.no_of_sheets) : null,
       batch_weight: formData.batch_weight ? parseFloat(formData.batch_weight) : null,
+      size_description: formData.size_description || null,
+      finish: formData.finish || null,
     };
+
+    // Only include pipe_type for Pipe category
+    if (formData.category === "Pipe") {
+      materialData.pipe_type = formData.pipe_type || null;
+    } else {
+      materialData.pipe_type = null;
+    }
+
+    // Only include bar_shape for Bar category
+    if (formData.category === "Bar") {
+      materialData.bar_shape = formData.bar_shape || null;
+    } else {
+      materialData.bar_shape = null;
+    }
 
     createMaterial.mutate(materialData);
   };
