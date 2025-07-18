@@ -1229,7 +1229,7 @@ const JobWork = () => {
                 <Label htmlFor={`quality-${index}`}>Quality Checked</Label>
               </div>
             </div>
-          )}
+          ))}
           
           <Button type="button" variant="outline" onClick={addInwardItem}>
             Add Another Item
