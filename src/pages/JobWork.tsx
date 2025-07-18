@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,27 +7,34 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Package, ArrowLeft, ArrowRight, Edit } from "lucide-react";
+import { CalendarIcon, Package, ArrowLeft, ArrowRight, Edit, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { KpiCard } from "@/components/KpiCard";
+import { JobWorkFilters } from "@/components/JobWorkFilters";
+import { JobWorkEditModal } from "@/components/JobWorkEditModal";
 
 const JobWork = () => {
   const [activeView, setActiveView] = useState<"dashboard" | "outward" | "inward">("dashboard");
   
   // Mock data for job work entries
-  const mockJobWorkData = [
+  const [mockJobWorkData, setMockJobWorkData] = useState([
     {
       id: "JW001",
       dcDate: "2025-01-15",
       vendorName: "Steel Fab Works",
-      materialDetails: "MS Sheet 10mm - Cutting",
+      materialDetails: "MS Sheet 10mm - Cutting, SS Rod 12mm - Threading",
       status: "under_process",
       expectedDate: "2025-01-25",
-      overDueDays: 0
+      overDueDays: 0,
+      vendorAddress: "Industrial Area, Phase 2, Sector 45",
+      contactPerson: "Rajesh Kumar",
+      contactNumber: "+91-9876543210",
+      notes: "Priority job for customer order"
     },
     {
       id: "JW002", 
@@ -36,16 +43,22 @@ const JobWork = () => {
       materialDetails: "SS Rod 12mm - Threading",
       status: "ready_to_dispatch",
       expectedDate: "2025-01-20",
-      overDueDays: 0
+      overDueDays: 0,
+      vendorAddress: "Main Road, Industrial Estate",
+      contactPerson: "Suresh Patel",
+      contactNumber: "+91-9876543211"
     },
     {
       id: "JW003",
       dcDate: "2025-01-05",
       vendorName: "Welding Solutions",
-      materialDetails: "MS Plate 20mm - Welding",
+      materialDetails: "MS Plate 20mm - Welding, Aluminum Sheet - Bending, Cast Iron - Machining",
       status: "quality_issues",
       expectedDate: "2025-01-15",
-      overDueDays: 3
+      overDueDays: 3,
+      vendorAddress: "Workshop Lane, Sector 12",
+      contactPerson: "Amit Singh",
+      contactNumber: "+91-9876543212"
     },
     {
       id: "JW004",
@@ -54,20 +67,117 @@ const JobWork = () => {
       materialDetails: "Cast Iron - Machining",
       status: "machine_under_repair",
       expectedDate: "2025-01-08",
-      overDueDays: 10
+      overDueDays: 10,
+      vendorAddress: "Heavy Industrial Complex",
+      contactPerson: "Vikram Sharma",
+      contactNumber: "+91-9876543213"
     },
     {
       id: "JW005",
       dcDate: "2025-01-12",
       vendorName: "Quick Process",
-      materialDetails: "Aluminum Sheet - Bending",
+      materialDetails: "Aluminum Sheet - Bending, MS Sheet 8mm - Cutting",
       status: "yet_to_start",
       expectedDate: "2025-01-22",
-      overDueDays: 0
+      overDueDays: 0,
+      vendorAddress: "Quick Processing Unit, Zone A",
+      contactPerson: "Pradeep Gupta",
+      contactNumber: "+91-9876543214"
+    },
+    {
+      id: "JW006",
+      dcDate: "2025-01-08",
+      vendorName: "Metro Fabricators",
+      materialDetails: "SS Pipe 25mm - Cutting, MS Angle - Welding",
+      status: "ready_to_dispatch",
+      expectedDate: "2025-01-18",
+      overDueDays: 0,
+      vendorAddress: "Metro Industrial Park",
+      contactPerson: "Ravi Mehta",
+      contactNumber: "+91-9876543215"
+    },
+    {
+      id: "JW007",
+      dcDate: "2024-12-30",
+      vendorName: "Advanced Manufacturing",
+      materialDetails: "Titanium Rod - Precision Machining",
+      status: "quality_issues",
+      expectedDate: "2025-01-10",
+      overDueDays: 8,
+      vendorAddress: "Advanced Tech Hub",
+      contactPerson: "Dr. Ramesh",
+      contactNumber: "+91-9876543216"
     }
-  ];
+  ]);
 
+  // Filter and search states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [overdueFilter, setOverdueFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("dcDate");
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingJobWork, setEditingJobWork] = useState<any>(null);
   const [editingJobWorkId, setEditingJobWorkId] = useState<string | null>(null);
+
+  // Filter and search logic
+  const filteredAndSortedData = useMemo(() => {
+    let filtered = mockJobWorkData.filter(jobWork => {
+      const matchesSearch = searchTerm === "" || 
+        jobWork.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        jobWork.materialDetails.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        jobWork.id.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === "all" || jobWork.status === statusFilter;
+      
+      const matchesOverdue = overdueFilter === "all" || 
+        (overdueFilter === "yes" && jobWork.overDueDays > 0) ||
+        (overdueFilter === "no" && jobWork.overDueDays === 0);
+      
+      const jobWorkDate = new Date(jobWork.dcDate);
+      const matchesDateRange = !dateRange.from || !dateRange.to ||
+        (jobWorkDate >= dateRange.from && jobWorkDate <= dateRange.to);
+      
+      return matchesSearch && matchesStatus && matchesOverdue && matchesDateRange;
+    });
+
+    // Sort the filtered data
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "dcDate":
+          return new Date(b.dcDate).getTime() - new Date(a.dcDate).getTime();
+        case "expectedDate":
+          return new Date(a.expectedDate).getTime() - new Date(b.expectedDate).getTime();
+        case "vendorName":
+          return a.vendorName.localeCompare(b.vendorName);
+        case "overdueDays":
+          return b.overDueDays - a.overDueDays;
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [mockJobWorkData, searchTerm, statusFilter, overdueFilter, sortBy, dateRange]);
+
+  // KPI calculations
+  const kpiData = useMemo(() => {
+    const overdueJobs = mockJobWorkData.filter(job => job.overDueDays > 0).length;
+    const readyToDispatch = mockJobWorkData.filter(job => job.status === "ready_to_dispatch").length;
+    const qualityIssues = mockJobWorkData.filter(job => job.status === "quality_issues").length;
+    
+    return { overdueJobs, readyToDispatch, qualityIssues };
+  }, [mockJobWorkData]);
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setOverdueFilter("all");
+    setSortBy("dcDate");
+    setDateRange({});
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -90,19 +200,46 @@ const JobWork = () => {
     });
   };
 
-  const calculateOverdueDays = (expectedDate: string) => {
-    const today = new Date();
-    const expected = new Date(expectedDate);
-    const diffTime = today.getTime() - expected.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  };
-
   const handleStatusUpdate = (jobWorkId: string, newStatus: string) => {
-    // In a real app, this would update the database
-    console.log(`Updating job work ${jobWorkId} status to ${newStatus}`);
+    setMockJobWorkData(prev => 
+      prev.map(job => 
+        job.id === jobWorkId ? { ...job, status: newStatus } : job
+      )
+    );
     setEditingJobWorkId(null);
   };
+
+  const handleEditJobWork = (jobWork: any) => {
+    setEditingJobWork(jobWork);
+    setEditModalOpen(true);
+  };
+
+  const handleSaveJobWork = (updatedJobWork: any) => {
+    setMockJobWorkData(prev => 
+      prev.map(job => 
+        job.id === updatedJobWork.id ? updatedJobWork : job
+      )
+    );
+  };
+
+  const formatMaterialDetails = (details: string) => {
+    const items = details.split(', ');
+    if (items.length <= 1) {
+      return <span className="text-sm">{details}</span>;
+    }
+    
+    return (
+      <div className="text-sm">
+        <div>{items[0]}</div>
+        {items.length > 1 && (
+          <div className="text-xs text-muted-foreground mt-1">
+            +{items.length - 1} more item{items.length > 2 ? 's' : ''}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const [outwardForm, setOutwardForm] = useState({
     challanNumber: "",
     contractorName: "",
@@ -174,17 +311,58 @@ const JobWork = () => {
   const renderDashboard = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Job Work Management</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Job Work Management</h1>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <KpiCard
+          title="Overdue Jobs"
+          value={kpiData.overdueJobs}
+          subtitle="Jobs past expected date"
+          status="critical"
+          icon={AlertTriangle}
+          actionLabel="View Overdue"
+          onAction={() => {
+            setOverdueFilter("yes");
+          }}
+          details={`${kpiData.overdueJobs} jobs need immediate attention`}
+        />
+        <KpiCard
+          title="Ready to Dispatch"
+          value={kpiData.readyToDispatch}
+          subtitle="Completed jobs ready"
+          status="good"
+          icon={CheckCircle}
+          actionLabel="View Ready"
+          onAction={() => {
+            setStatusFilter("ready_to_dispatch");
+          }}
+          details={`${kpiData.readyToDispatch} jobs completed and ready`}
+        />
+        <KpiCard
+          title="Quality Issues"
+          value={kpiData.qualityIssues}
+          subtitle="Jobs with quality problems"
+          status="warning"
+          icon={Clock}
+          actionLabel="View Issues"
+          onAction={() => {
+            setStatusFilter("quality_issues");
+          }}
+          details={`${kpiData.qualityIssues} jobs require rework`}
+        />
+      </div>
+      
+      {/* Action Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setActiveView("outward")}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <ArrowRight className="h-5 w-5 text-primary" />
               Outward Job Work
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               Send materials to contractors for processing
             </CardDescription>
           </CardHeader>
@@ -196,12 +374,12 @@ const JobWork = () => {
         </Card>
 
         <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setActiveView("inward")}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <ArrowLeft className="h-5 w-5 text-primary" />
               Inward Job Work
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               Receive processed materials from contractors
             </CardDescription>
           </CardHeader>
@@ -213,48 +391,68 @@ const JobWork = () => {
         </Card>
       </div>
 
+      {/* Filters */}
+      <JobWorkFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        overdueFilter={overdueFilter}
+        onOverdueFilterChange={setOverdueFilter}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        onClearFilters={clearFilters}
+      />
+
       {/* Job Work Status Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Package className="h-5 w-5" />
-            Job Work Status
+            Job Work Status ({filteredAndSortedData.length})
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Track the status of materials sent to vendors for processing
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>DC Date</TableHead>
-                  <TableHead>Vendor Name</TableHead>
-                  <TableHead>Material Details</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Expected Date</TableHead>
-                  <TableHead>Overdue Days</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                <TableRow className="border-b">
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">DC Date</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Vendor</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[200px]">Material Details</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Status</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Expected</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Overdue</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4 w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockJobWorkData.map((jobWork) => (
-                  <TableRow key={jobWork.id}>
-                    <TableCell className="font-medium">
+                {filteredAndSortedData.map((jobWork) => (
+                  <TableRow key={jobWork.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium text-xs px-2 sm:px-4 py-2">
                       {formatDate(jobWork.dcDate)}
                     </TableCell>
-                    <TableCell>{jobWork.vendorName}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {jobWork.materialDetails}
+                    <TableCell className="text-xs px-2 sm:px-4 py-2">
+                      <div>
+                        <div className="font-medium">{jobWork.vendorName}</div>
+                        <div className="text-muted-foreground text-xs">{jobWork.id}</div>
+                      </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2 sm:px-4 py-2">
+                      {formatMaterialDetails(jobWork.materialDetails)}
+                    </TableCell>
+                    <TableCell className="px-2 sm:px-4 py-2">
                       {editingJobWorkId === jobWork.id ? (
                         <Select
                           defaultValue={jobWork.status}
                           onValueChange={(value) => handleStatusUpdate(jobWork.id, value)}
                         >
-                          <SelectTrigger className="w-[180px]">
+                          <SelectTrigger className="w-[140px] h-8 text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -266,35 +464,56 @@ const JobWork = () => {
                           </SelectContent>
                         </Select>
                       ) : (
-                        getStatusBadge(jobWork.status)
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => setEditingJobWorkId(jobWork.id)}
+                        >
+                          {getStatusBadge(jobWork.status)}
+                        </div>
                       )}
                     </TableCell>
-                    <TableCell>{formatDate(jobWork.expectedDate)}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-xs px-2 sm:px-4 py-2">{formatDate(jobWork.expectedDate)}</TableCell>
+                    <TableCell className="px-2 sm:px-4 py-2">
                       {jobWork.overDueDays > 0 ? (
-                        <Badge variant="destructive" className="text-xs">
-                          {jobWork.overDueDays} days
+                        <Badge variant="destructive" className="text-xs px-1 py-0">
+                          {jobWork.overDueDays}d
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className="text-muted-foreground text-xs">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-2 sm:px-4 py-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setEditingJobWorkId(editingJobWorkId === jobWork.id ? null : jobWork.id)}
+                        onClick={() => handleEditJobWork(jobWork)}
+                        className="h-8 w-8 p-0"
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-3 w-3" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
+                {filteredAndSortedData.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No job work entries found matching your criteria
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Modal */}
+      <JobWorkEditModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        jobWork={editingJobWork}
+        onSave={handleSaveJobWork}
+      />
     </div>
   );
 
@@ -744,7 +963,7 @@ const JobWork = () => {
   );
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-4 sm:p-6">
       {activeView === "dashboard" && renderDashboard()}
       {activeView === "outward" && renderOutwardForm()}
       {activeView === "inward" && renderInwardForm()}
