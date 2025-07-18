@@ -14,12 +14,14 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { KpiCard } from "@/components/KpiCard";
 import { JobWorkFilters } from "@/components/JobWorkFilters";
 import { JobWorkEditModal } from "@/components/JobWorkEditModal";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 const JobWork = () => {
+  const { toast } = useToast();
   const [activeView, setActiveView] = useState<"dashboard" | "outward" | "inward">("dashboard");
   
   // Mock materials data for product selection
@@ -401,6 +403,109 @@ const JobWork = () => {
         scrapQuantity: 0
       }]
     }));
+  };
+
+  const [isSubmittingOutward, setIsSubmittingOutward] = React.useState(false);
+
+  const handleSubmitOutward = async () => {
+    try {
+      setIsSubmittingOutward(true);
+
+      // Validation
+      if (!outwardForm.challanNumber) {
+        toast({
+          title: "Validation Error",
+          description: "Challan Number is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!outwardForm.expectedDelivery) {
+        toast({
+          title: "Validation Error", 
+          description: "Expected Delivery Date is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!outwardForm.contractorName) {
+        toast({
+          title: "Validation Error",
+          description: "Contractor Name is required", 
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (outwardForm.items.length === 0) {
+        toast({
+          title: "Validation Error",
+          description: "At least one material item is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate each item
+      for (let i = 0; i < outwardForm.items.length; i++) {
+        const item = outwardForm.items[i];
+        if (!item.materialName || !item.sku || !item.quantity || !item.jobworkDetails) {
+          toast({
+            title: "Validation Error",
+            description: `Item ${i + 1}: All fields are required`,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (item.quantity > item.currentStock) {
+          toast({
+            title: "Validation Error",
+            description: `Item ${i + 1}: Quantity exceeds current stock (${item.currentStock})`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Simulate API call (replace with actual API call)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Success feedback
+      toast({
+        title: "Success",
+        description: "Outward entry submitted successfully",
+      });
+
+      // Reset form
+      setOutwardForm({
+        challanNumber: "",
+        contractorName: "",
+        contractorAddress: "",
+        concernedPerson: "",
+        contactNumber: "",
+        expectedDelivery: undefined,
+        isForCustomerOrder: false,
+        salesOrderId: "",
+        woodPallet: false,
+        paletteCount: 0,
+        items: []
+      });
+
+      // Navigate back to dashboard
+      setActiveView("dashboard");
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit outward entry. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingOutward(false);
+    }
   };
 
   const renderDashboard = () => (
@@ -919,8 +1024,8 @@ const JobWork = () => {
         <Button variant="outline" onClick={() => setActiveView("dashboard")}>
           Cancel
         </Button>
-        <Button>
-          Submit Outward Entry
+        <Button onClick={handleSubmitOutward} disabled={isSubmittingOutward}>
+          {isSubmittingOutward ? "Submitting..." : "Submit Outward Entry"}
         </Button>
       </div>
 
