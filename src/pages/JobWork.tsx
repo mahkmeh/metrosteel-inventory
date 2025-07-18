@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Package, ArrowLeft, ArrowRight } from "lucide-react";
+import { CalendarIcon, Package, ArrowLeft, ArrowRight, Edit } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,6 +17,92 @@ import { cn } from "@/lib/utils";
 
 const JobWork = () => {
   const [activeView, setActiveView] = useState<"dashboard" | "outward" | "inward">("dashboard");
+  
+  // Mock data for job work entries
+  const mockJobWorkData = [
+    {
+      id: "JW001",
+      dcDate: "2025-01-15",
+      vendorName: "Steel Fab Works",
+      materialDetails: "MS Sheet 10mm - Cutting",
+      status: "under_process",
+      expectedDate: "2025-01-25",
+      overDueDays: 0
+    },
+    {
+      id: "JW002", 
+      dcDate: "2025-01-10",
+      vendorName: "Precision Tools Ltd",
+      materialDetails: "SS Rod 12mm - Threading",
+      status: "ready_to_dispatch",
+      expectedDate: "2025-01-20",
+      overDueDays: 0
+    },
+    {
+      id: "JW003",
+      dcDate: "2025-01-05",
+      vendorName: "Welding Solutions",
+      materialDetails: "MS Plate 20mm - Welding",
+      status: "quality_issues",
+      expectedDate: "2025-01-15",
+      overDueDays: 3
+    },
+    {
+      id: "JW004",
+      dcDate: "2024-12-28",
+      vendorName: "Heavy Industries",
+      materialDetails: "Cast Iron - Machining",
+      status: "machine_under_repair",
+      expectedDate: "2025-01-08",
+      overDueDays: 10
+    },
+    {
+      id: "JW005",
+      dcDate: "2025-01-12",
+      vendorName: "Quick Process",
+      materialDetails: "Aluminum Sheet - Bending",
+      status: "yet_to_start",
+      expectedDate: "2025-01-22",
+      overDueDays: 0
+    }
+  ];
+
+  const [editingJobWorkId, setEditingJobWorkId] = useState<string | null>(null);
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      yet_to_start: { variant: "secondary" as const, label: "Yet to Start" },
+      under_process: { variant: "default" as const, label: "Under Process" },
+      ready_to_dispatch: { variant: "success" as const, label: "Ready to Dispatch" },
+      quality_issues: { variant: "destructive" as const, label: "Quality Issues" },
+      machine_under_repair: { variant: "warning" as const, label: "Machine Under Repair" }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.yet_to_start;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric'
+    });
+  };
+
+  const calculateOverdueDays = (expectedDate: string) => {
+    const today = new Date();
+    const expected = new Date(expectedDate);
+    const diffTime = today.getTime() - expected.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  const handleStatusUpdate = (jobWorkId: string, newStatus: string) => {
+    // In a real app, this would update the database
+    console.log(`Updating job work ${jobWorkId} status to ${newStatus}`);
+    setEditingJobWorkId(null);
+  };
   const [outwardForm, setOutwardForm] = useState({
     challanNumber: "",
     contractorName: "",
@@ -124,6 +212,89 @@ const JobWork = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Job Work Status Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Job Work Status
+          </CardTitle>
+          <CardDescription>
+            Track the status of materials sent to vendors for processing
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>DC Date</TableHead>
+                  <TableHead>Vendor Name</TableHead>
+                  <TableHead>Material Details</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Expected Date</TableHead>
+                  <TableHead>Overdue Days</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mockJobWorkData.map((jobWork) => (
+                  <TableRow key={jobWork.id}>
+                    <TableCell className="font-medium">
+                      {formatDate(jobWork.dcDate)}
+                    </TableCell>
+                    <TableCell>{jobWork.vendorName}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">
+                      {jobWork.materialDetails}
+                    </TableCell>
+                    <TableCell>
+                      {editingJobWorkId === jobWork.id ? (
+                        <Select
+                          defaultValue={jobWork.status}
+                          onValueChange={(value) => handleStatusUpdate(jobWork.id, value)}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yet_to_start">Yet to Start</SelectItem>
+                            <SelectItem value="under_process">Under Process</SelectItem>
+                            <SelectItem value="ready_to_dispatch">Ready to Dispatch</SelectItem>
+                            <SelectItem value="quality_issues">Quality Issues</SelectItem>
+                            <SelectItem value="machine_under_repair">Machine Under Repair</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        getStatusBadge(jobWork.status)
+                      )}
+                    </TableCell>
+                    <TableCell>{formatDate(jobWork.expectedDate)}</TableCell>
+                    <TableCell>
+                      {jobWork.overDueDays > 0 ? (
+                        <Badge variant="destructive" className="text-xs">
+                          {jobWork.overDueDays} days
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingJobWorkId(editingJobWorkId === jobWork.id ? null : jobWork.id)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
