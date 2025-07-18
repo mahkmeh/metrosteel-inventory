@@ -11,9 +11,10 @@ import { KpiCard } from "@/components/KpiCard";
 
 interface ContractorsTabProps {
   onAddContractor: () => void;
+  onEditContractor: (contractorId: string) => void;
 }
 
-export const ContractorsTab = ({ onAddContractor }: ContractorsTabProps) => {
+export const ContractorsTab = ({ onAddContractor, onEditContractor }: ContractorsTabProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name");
@@ -308,6 +309,7 @@ export const ContractorsTab = ({ onAddContractor }: ContractorsTabProps) => {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0"
+                        onClick={() => onEditContractor(contractor.id)}
                       >
                         <Edit className="h-3 w-3" />
                       </Button>

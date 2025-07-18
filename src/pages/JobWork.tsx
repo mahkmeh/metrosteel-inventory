@@ -1291,7 +1291,10 @@ const JobWork = () => {
         </TabsContent>
 
         <TabsContent value="contractors" className="space-y-6">
-          <ContractorsTab onAddContractor={() => {/* Add contractor modal logic */}} />
+          <ContractorsTab 
+            onAddContractor={() => console.log("Add new contractor clicked")} 
+            onEditContractor={(contractorId) => console.log("Edit contractor:", contractorId)}
+          />
         </TabsContent>
       </Tabs>
 
