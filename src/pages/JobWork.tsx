@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Package, ArrowLeft, ArrowRight, Edit, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { CalendarIcon, Package, ArrowLeft, ArrowRight, Edit, AlertTriangle, CheckCircle, Clock, Plus, Search, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -17,10 +17,60 @@ import { cn } from "@/lib/utils";
 import { KpiCard } from "@/components/KpiCard";
 import { JobWorkFilters } from "@/components/JobWorkFilters";
 import { JobWorkEditModal } from "@/components/JobWorkEditModal";
+import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 const JobWork = () => {
   const [activeView, setActiveView] = useState<"dashboard" | "outward" | "inward">("dashboard");
   
+  // Mock materials data for product selection
+  const mockMaterials = [
+    {
+      id: "1",
+      name: "MS Sheet 10mm",
+      sku: "MS-SHE-10",
+      category: "Sheet",
+      grade: "MS",
+      base_price: 45000,
+      batch_no: "B001"
+    },
+    {
+      id: "2", 
+      name: "SS Rod 12mm",
+      sku: "SS-ROD-12",
+      category: "Rod",
+      grade: "SS304",
+      base_price: 85000,
+      batch_no: "B002"
+    },
+    {
+      id: "3",
+      name: "MS Plate 20mm", 
+      sku: "MS-PLA-20",
+      category: "Plate",
+      grade: "MS",
+      base_price: 52000,
+      batch_no: "B003"
+    },
+    {
+      id: "4",
+      name: "Aluminum Sheet 5mm",
+      sku: "AL-SHE-05", 
+      category: "Sheet",
+      grade: "AL6061",
+      base_price: 180000,
+      batch_no: "B004"
+    },
+    {
+      id: "5",
+      name: "Cast Iron Block",
+      sku: "CI-BLO-50",
+      category: "Block", 
+      grade: "CI",
+      base_price: 35000,
+      batch_no: "B005"
+    }
+  ];
+
   // Mock data for job work entries
   const [mockJobWorkData, setMockJobWorkData] = useState([
     {
@@ -253,6 +303,7 @@ const JobWork = () => {
     paletteCount: 0,
     items: [{
       materialId: "",
+      materialName: "",
       sku: "",
       batchNumber: "",
       quantity: 0,
@@ -277,11 +328,48 @@ const JobWork = () => {
     }]
   });
 
+  // Product selection modal state
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [quickSearchTerm, setQuickSearchTerm] = useState("");
+
+  const handleSelectMaterial = (material: any) => {
+    const newItem = {
+      materialId: material.id,
+      materialName: material.name,
+      sku: material.sku,
+      batchNumber: material.batch_no || "",
+      quantity: 0,
+      currentStock: 100, // Mock stock value
+      basePrice: material.base_price,
+      jobworkDetails: ""
+    };
+
+    setOutwardForm(prev => ({
+      ...prev,
+      items: [...prev.items, newItem]
+    }));
+  };
+
+  const handleQuickSearch = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && quickSearchTerm.trim()) {
+      const material = mockMaterials.find(m => 
+        m.name.toLowerCase().includes(quickSearchTerm.toLowerCase()) ||
+        m.sku.toLowerCase().includes(quickSearchTerm.toLowerCase())
+      );
+      
+      if (material) {
+        handleSelectMaterial(material);
+        setQuickSearchTerm("");
+      }
+    }
+  };
+
   const addOutwardItem = () => {
     setOutwardForm(prev => ({
       ...prev,
       items: [...prev.items, {
         materialId: "",
+        materialName: "",
         sku: "",
         batchNumber: "",
         quantity: 0,
@@ -289,6 +377,13 @@ const JobWork = () => {
         basePrice: 0,
         jobworkDetails: ""
       }]
+    }));
+  };
+
+  const removeOutwardItem = (index: number) => {
+    setOutwardForm(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
     }));
   };
 
@@ -674,91 +769,149 @@ const JobWork = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Material Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {outwardForm.items.map((item, index) => (
-            <div key={index} className="border rounded-lg p-4 space-y-4 mb-4">
-              <h4 className="font-semibold">Item {index + 1}</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>SKU</Label>
-                  <Input
-                    value={item.sku}
-                    onChange={(e) => {
-                      const newItems = [...outwardForm.items];
-                      newItems[index].sku = e.target.value;
-                      setOutwardForm(prev => ({ ...prev, items: newItems }));
-                    }}
-                    placeholder="Enter SKU"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Batch Number</Label>
-                  <Input
-                    value={item.batchNumber}
-                    onChange={(e) => {
-                      const newItems = [...outwardForm.items];
-                      newItems[index].batchNumber = e.target.value;
-                      setOutwardForm(prev => ({ ...prev, items: newItems }));
-                    }}
-                    placeholder="Enter batch number"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Quantity (Current Stock: {item.currentStock})</Label>
-                  <Input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => {
-                      const newItems = [...outwardForm.items];
-                      newItems[index].quantity = parseFloat(e.target.value) || 0;
-                      setOutwardForm(prev => ({ ...prev, items: newItems }));
-                    }}
-                    placeholder="Enter quantity"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Base Price</Label>
-                  <Input
-                    type="number"
-                    value={item.basePrice}
-                    onChange={(e) => {
-                      const newItems = [...outwardForm.items];
-                      newItems[index].basePrice = parseFloat(e.target.value) || 0;
-                      setOutwardForm(prev => ({ ...prev, items: newItems }));
-                    }}
-                    placeholder="Base price"
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Job Work Details</Label>
-                  <Input
-                    value={item.jobworkDetails}
-                    onChange={(e) => {
-                      const newItems = [...outwardForm.items];
-                      newItems[index].jobworkDetails = e.target.value;
-                      setOutwardForm(prev => ({ ...prev, items: newItems }));
-                    }}
-                    placeholder="Enter job work details"
-                  />
-                </div>
-              </div>
+          <div className="flex items-center justify-between">
+            <CardTitle>Material Details</CardTitle>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setProductModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Search className="h-4 w-4" />
+                Browse Products
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addOutwardItem}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Item
+              </Button>
             </div>
-          ))}
-          
-          <Button type="button" variant="outline" onClick={addOutwardItem}>
-            Add Another Item
-          </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Quick Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Quick add: Type product name or SKU and press Enter..."
+              value={quickSearchTerm}
+              onChange={(e) => setQuickSearchTerm(e.target.value)}
+              onKeyDown={handleQuickSearch}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Items List */}
+          <div className="space-y-4">
+            {outwardForm.items.map((item, index) => (
+              <div key={index} className="border rounded-lg p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">Item {index + 1}</h4>
+                  {outwardForm.items.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeOutwardItem(index)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Material Name</Label>
+                    <Input
+                      value={item.materialName}
+                      onChange={(e) => {
+                        const newItems = [...outwardForm.items];
+                        newItems[index].materialName = e.target.value;
+                        setOutwardForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      placeholder="Enter material name"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>SKU</Label>
+                    <Input
+                      value={item.sku}
+                      onChange={(e) => {
+                        const newItems = [...outwardForm.items];
+                        newItems[index].sku = e.target.value;
+                        setOutwardForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      placeholder="Enter SKU"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Batch Number</Label>
+                    <Input
+                      value={item.batchNumber}
+                      onChange={(e) => {
+                        const newItems = [...outwardForm.items];
+                        newItems[index].batchNumber = e.target.value;
+                        setOutwardForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      placeholder="Enter batch number"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Quantity (Current Stock: {item.currentStock})</Label>
+                    <Input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const newItems = [...outwardForm.items];
+                        newItems[index].quantity = parseFloat(e.target.value) || 0;
+                        setOutwardForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      placeholder="Enter quantity"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Base Price</Label>
+                    <Input
+                      type="number"
+                      value={item.basePrice}
+                      onChange={(e) => {
+                        const newItems = [...outwardForm.items];
+                        newItems[index].basePrice = parseFloat(e.target.value) || 0;
+                        setOutwardForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      placeholder="Base price"
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Job Work Details</Label>
+                    <Input
+                      value={item.jobworkDetails}
+                      onChange={(e) => {
+                        const newItems = [...outwardForm.items];
+                        newItems[index].jobworkDetails = e.target.value;
+                        setOutwardForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      placeholder="Enter job work details"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -770,6 +923,14 @@ const JobWork = () => {
           Submit Outward Entry
         </Button>
       </div>
+
+      {/* Product Selection Modal */}
+      <ProductSelectionModal
+        open={productModalOpen}
+        onOpenChange={setProductModalOpen}
+        materials={mockMaterials}
+        onSelectMaterial={handleSelectMaterial}
+      />
     </div>
   );
 
