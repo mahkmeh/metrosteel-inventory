@@ -19,9 +19,13 @@ import { KpiCard } from "@/components/KpiCard";
 import { JobWorkFilters } from "@/components/JobWorkFilters";
 import { JobWorkEditModal } from "@/components/JobWorkEditModal";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+import { InwardTab } from "@/components/JobWork/InwardTab";
+import { OutwardTab } from "@/components/JobWork/OutwardTab";
+import { ContractorsTab } from "@/components/JobWork/ContractorsTab";
 
 const JobWork = () => {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("inward");
   const [activeView, setActiveView] = useState<"dashboard" | "outward" | "inward">("dashboard");
   
   // Mock materials data for product selection
@@ -496,6 +500,7 @@ const JobWork = () => {
 
       // Navigate back to dashboard
       setActiveView("dashboard");
+      setActiveTab("inward");
 
     } catch (error) {
       toast({
@@ -1248,11 +1253,62 @@ const JobWork = () => {
     </div>
   );
 
+  if (activeView === "outward") {
+    return (
+      <div className="container mx-auto p-4 sm:p-6">
+        {renderOutwardForm()}
+      </div>
+    );
+  }
+
+  if (activeView === "inward") {
+    return (
+      <div className="container mx-auto p-4 sm:p-6">
+        {renderInwardForm()}
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4 sm:p-6">
-      {activeView === "dashboard" && renderDashboard()}
-      {activeView === "outward" && renderOutwardForm()}
-      {activeView === "inward" && renderInwardForm()}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Job Work Management</h1>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="inward">Inward</TabsTrigger>
+          <TabsTrigger value="outward">Outward</TabsTrigger>
+          <TabsTrigger value="contractors">Contractors</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="inward" className="space-y-6">
+          <InwardTab onCreateInward={() => setActiveView("inward")} />
+        </TabsContent>
+
+        <TabsContent value="outward" className="space-y-6">
+          <OutwardTab onCreateOutward={() => setActiveView("outward")} />
+        </TabsContent>
+
+        <TabsContent value="contractors" className="space-y-6">
+          <ContractorsTab onAddContractor={() => {/* Add contractor modal logic */}} />
+        </TabsContent>
+      </Tabs>
+
+      {/* Modals */}
+      <JobWorkEditModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        jobWork={editingJobWork}
+        onSave={handleSaveJobWork}
+      />
+
+      <ProductSelectionModal
+        open={productModalOpen}
+        onOpenChange={setProductModalOpen}
+        materials={mockMaterials}
+        onSelectMaterial={handleSelectMaterial}
+      />
     </div>
   );
 };
