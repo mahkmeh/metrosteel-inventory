@@ -1,4 +1,4 @@
-import { Package, Warehouse, Users, FileText, ShoppingCart, BarChart3, Moon, Sun, Monitor, Truck } from "lucide-react"
+import { Package, Warehouse, Users, FileText, ShoppingCart, BarChart3, Moon, Sun, Monitor, Truck, Wrench } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useTheme } from "@/hooks/use-theme"
 import {
@@ -28,6 +28,7 @@ const navigation = [
   { title: "Quotations", url: "/quotations", icon: FileText },
   { title: "Purchase", url: "/purchase", icon: Truck },
   { title: "Sales", url: "/sales", icon: ShoppingCart },
+  { title: "Job Work", url: "/jobwork", icon: Wrench },
 ]
 
 export function AppSidebar() {
