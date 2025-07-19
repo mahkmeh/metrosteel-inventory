@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -5,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Paperclip, Link, Plus, Trash2 } from "lucide-react";
+import { Paperclip, Link, Plus, Trash2, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,12 +15,6 @@ interface Batch {
   batch_code: string;
   total_weight_kg: number;
   heat_number?: string;
-  quality_grade: string;
-  make?: string;
-  supplier_id?: string;
-  location_id?: string;
-  manufactured_date?: string;
-  received_date?: string;
   notes?: string;
 }
 
@@ -41,47 +36,40 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
       batch_code: "",
       total_weight_kg: 0,
       heat_number: "",
-      quality_grade: "A",
-      make: "",
-      supplier_id: "",
-      location_id: "",
-      manufactured_date: "",
-      received_date: "",
       notes: "",
     },
   ]);
+  
+  const [showDescription, setShowDescription] = useState(false);
+  const [showBatchNotes, setShowBatchNotes] = useState<{[key: number]: boolean}>({});
 
-  // Fetch suppliers and locations for dropdowns
-  const { data: suppliers = [] } = useQuery({
-    queryKey: ["suppliers"],
+  // Fetch recent batch numbers for reference
+  const { data: recentBatches = [] } = useQuery({
+    queryKey: ["recent-batches", formData.sku],
     queryFn: async () => {
-      const { data, error } = await supabase.from("suppliers").select("*").eq("is_active", true);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: locations = [] } = useQuery({
-    queryKey: ["locations"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("locations").select("*").eq("is_active", true);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Fetch previous batch numbers for reference
-  const { data: previousBatches = [] } = useQuery({
-    queryKey: ["previous-batches"],
-    queryFn: async () => {
+      if (!formData.sku) return [];
+      
       const { data, error } = await supabase
         .from("batches")
         .select("batch_code")
+        .eq("sku_id", formData.id || "")
         .order("created_at", { ascending: false })
-        .limit(5);
-      if (error) throw error;
+        .limit(3);
+
+      if (error) {
+        // If no batches found for this specific SKU, get general recent batches
+        const { data: generalData, error: generalError } = await supabase
+          .from("batches")
+          .select("batch_code")
+          .order("created_at", { ascending: false })
+          .limit(3);
+        
+        if (generalError) throw generalError;
+        return generalData || [];
+      }
       return data;
     },
+    enabled: !!formData.sku
   });
 
   const updateField = (field: string, value: string) => {
@@ -95,12 +83,6 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
         batch_code: "",
         total_weight_kg: 0,
         heat_number: "",
-        quality_grade: "A",
-        make: "",
-        supplier_id: "",
-        location_id: "",
-        manufactured_date: "",
-        received_date: "",
         notes: "",
       },
     ]);
@@ -111,6 +93,18 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
       const updatedBatches = batches.filter((_, i) => i !== index);
       setBatches(updatedBatches);
       onFormDataChange({ ...formData, batches: updatedBatches });
+      // Remove notes visibility state for removed batch
+      const newShowBatchNotes = { ...showBatchNotes };
+      delete newShowBatchNotes[index];
+      // Reindex remaining batch notes
+      Object.keys(newShowBatchNotes).forEach(key => {
+        const keyNum = parseInt(key);
+        if (keyNum > index) {
+          newShowBatchNotes[keyNum - 1] = newShowBatchNotes[keyNum];
+          delete newShowBatchNotes[keyNum];
+        }
+      });
+      setShowBatchNotes(newShowBatchNotes);
     }
   };
 
@@ -120,6 +114,13 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
     );
     setBatches(updatedBatches);
     onFormDataChange({ ...formData, batches: updatedBatches });
+  };
+
+  const toggleBatchNotes = (index: number) => {
+    setShowBatchNotes(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
   };
 
   const renderDimensionFields = () => {
@@ -401,9 +402,6 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
           className="text-lg h-12"
           required
         />
-        <p className="text-sm text-muted-foreground mt-1">
-          A descriptive name for this material
-        </p>
       </div>
 
       {/* Single form layout */}
@@ -475,16 +473,41 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
             {/* Dimension fields based on category */}
             {renderDimensionFields()}
 
-            {/* Description spanning multiple columns */}
+            {/* Description with plus button */}
             <div className="md:col-span-2 lg:col-span-3 xl:col-span-4">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description || ""}
-                onChange={(e) => updateField("description", e.target.value)}
-                placeholder="Additional details about this material..."
-                className="min-h-[80px]"
-              />
+              {!showDescription ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDescription(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Description
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="description">Description</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowDescription(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Textarea
+                    id="description"
+                    value={formData.description || ""}
+                    onChange={(e) => updateField("description", e.target.value)}
+                    placeholder="Additional details about this material..."
+                    className="min-h-[80px]"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -493,28 +516,23 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
       {/* Batch Management Section */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <div>
-            <h3 className="text-lg font-medium">Initial Batches</h3>
-            <p className="text-sm text-muted-foreground">
-              Add one or more initial batches for this material
-            </p>
-          </div>
+          <h3 className="text-lg font-medium">Initial Batches</h3>
           <Button onClick={addBatch} variant="outline" size="sm">
             <Plus className="h-4 w-4 mr-2" />
             Add Batch
           </Button>
         </div>
 
-        {/* Previous batch numbers reference */}
-        {previousBatches.length > 0 && (
+        {/* Recent batch numbers reference */}
+        {recentBatches.length > 0 && (
           <div className="text-xs text-muted-foreground">
-            Recent batch numbers: {previousBatches.map(b => b.batch_code).join(", ")}
+            Recent: {recentBatches.map(b => b.batch_code).join(", ")}
           </div>
         )}
 
         {batches.map((batch, index) => (
           <Card key={index}>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="font-medium">Batch {index + 1}</h4>
                 {batches.length > 1 && (
@@ -528,7 +546,7 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
                 )}
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor={`batch_code_${index}`}>Batch Number *</Label>
                   <Input
@@ -554,23 +572,6 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
                 </div>
 
                 <div>
-                  <Label htmlFor={`quality_${index}`}>Quality Grade</Label>
-                  <Select
-                    value={batch.quality_grade}
-                    onValueChange={(value) => updateBatch(index, "quality_grade", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="A">Grade A</SelectItem>
-                      <SelectItem value="B">Grade B</SelectItem>
-                      <SelectItem value="C">Grade C</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
                   <Label htmlFor={`heat_number_${index}`}>Heat Number</Label>
                   <div className="flex space-x-2">
                     <Input
@@ -588,75 +589,43 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
                     </Button>
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <Label htmlFor={`supplier_${index}`}>Supplier</Label>
-                  <Select
-                    value={batch.supplier_id || ""}
-                    onValueChange={(value) => updateBatch(index, "supplier_id", value)}
+              {/* Notes with plus button */}
+              <div className="mt-4">
+                {!showBatchNotes[index] ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleBatchNotes(index)}
+                    className="flex items-center gap-2"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor={`location_${index}`}>Location</Label>
-                  <Select
-                    value={batch.location_id || ""}
-                    onValueChange={(value) => updateBatch(index, "location_id", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor={`manufactured_date_${index}`}>Manufactured Date</Label>
-                  <Input
-                    id={`manufactured_date_${index}`}
-                    type="date"
-                    value={batch.manufactured_date || ""}
-                    onChange={(e) => updateBatch(index, "manufactured_date", e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor={`received_date_${index}`}>Received Date</Label>
-                  <Input
-                    id={`received_date_${index}`}
-                    type="date"
-                    value={batch.received_date || ""}
-                    onChange={(e) => updateBatch(index, "received_date", e.target.value)}
-                  />
-                </div>
-
-                <div className="md:col-span-2 lg:col-span-3 xl:col-span-4">
-                  <Label htmlFor={`notes_${index}`}>Notes</Label>
-                  <Textarea
-                    id={`notes_${index}`}
-                    value={batch.notes || ""}
-                    onChange={(e) => updateBatch(index, "notes", e.target.value)}
-                    placeholder="Additional notes for this batch..."
-                    className="min-h-[60px]"
-                  />
-                </div>
+                    <Plus className="h-4 w-4" />
+                    Add Notes
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor={`notes_${index}`}>Notes</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleBatchNotes(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Textarea
+                      id={`notes_${index}`}
+                      value={batch.notes || ""}
+                      onChange={(e) => updateBatch(index, "notes", e.target.value)}
+                      placeholder="Additional notes for this batch..."
+                      className="min-h-[60px]"
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

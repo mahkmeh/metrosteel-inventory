@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, Edit, ArrowUpDown, ChevronLeft, ChevronRight, AlertTriangle, Package, DollarSign, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -304,10 +304,6 @@ const Materials = () => {
               available_weight_kg: batch.total_weight_kg,
               heat_number: batch.heat_number,
               make: batch.make || formData.make,
-              quality_grade: batch.quality_grade,
-              supplier_id: batch.supplier_id,
-              manufactured_date: batch.manufactured_date,
-              received_date: batch.received_date,
               notes: batch.notes,
             });
           }
@@ -445,9 +441,6 @@ const Materials = () => {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingMaterial ? "Edit Material" : "Add New Material"}</DialogTitle>
-              <DialogDescription>
-                {editingMaterial ? "Update the steel material details" : "Create a new steel material entry"}
-              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-6">
