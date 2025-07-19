@@ -13,6 +13,10 @@ import Customers from "./pages/Customers";
 import Quotations from "./pages/Quotations";
 import Sales from "./pages/Sales";
 import Purchase from "./pages/Purchase";
+import PurchaseInvoice from "./pages/PurchaseInvoice";
+import Vendors from "./pages/Vendors";
+import PurchaseReturn from "./pages/PurchaseReturn";
+import Payables from "./pages/Payables";
 import JobWork from "./pages/JobWork";
 import NotFound from "./pages/NotFound";
 
@@ -34,6 +38,10 @@ const App: React.FC = () => {
                 <Route path="customers" element={<Customers />} />
                 <Route path="quotations" element={<Quotations />} />
                 <Route path="purchase" element={<Purchase />} />
+                <Route path="purchase/invoice" element={<PurchaseInvoice />} />
+                <Route path="purchase/vendors" element={<Vendors />} />
+                <Route path="purchase/return" element={<PurchaseReturn />} />
+                <Route path="purchase/payables" element={<Payables />} />
                 <Route path="sales" element={<Sales />} />
                 <Route path="jobwork" element={<JobWork />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

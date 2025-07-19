@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit, ArrowUpDown, ChevronLeft, ChevronRight, AlertTriangle, Package, DollarSign, ShieldAlert } from "lucide-react";
+import { Plus, Search, Edit, ArrowUpDown, ChevronLeft, ChevronRight, AlertTriangle, Package, DollarSign, ShieldAlert, Truck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { KpiCard } from "@/components/KpiCard";
 import { useMaterialKpis } from "@/hooks/useMaterialKpis";
+import { useMaterialsWithStock } from "@/hooks/useMaterialsWithStock";
 import { MaterialFormSteps } from "@/components/MaterialForm/MaterialFormSteps";
 import { CategoryStep } from "@/components/MaterialForm/steps/CategoryStep";
 import { SubTypeStep } from "@/components/MaterialForm/steps/SubTypeStep";
@@ -63,24 +64,7 @@ const Materials = () => {
   const queryClient = useQueryClient();
   const { data: kpiData, isLoading: kpiLoading } = useMaterialKpis();
 
-  const { data: materials, isLoading } = useQuery({
-    queryKey: ["materials", searchTerm, sortField, sortDirection],
-    queryFn: async () => {
-      let query = supabase
-        .from("materials")
-        .select("*")
-        .eq("is_active", true)
-        .order(sortField, { ascending: sortDirection === "asc" });
-
-      if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    }
-  });
+  const { data: materials, isLoading } = useMaterialsWithStock(searchTerm, sortField, sortDirection);
 
   // Query to check for existing SKUs for validation
   const { data: existingSKUs = [] } = useQuery({
@@ -686,6 +670,36 @@ const Materials = () => {
                   <Button 
                     variant="ghost" 
                     className="h-auto p-0 font-semibold text-left justify-start"
+                    onClick={() => handleSort("currentStock")}
+                  >
+                    Current Stock
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    className="h-auto p-0 font-semibold text-left justify-start"
+                    onClick={() => handleSort("orderedQty")}
+                  >
+                    Ordered Qty
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    className="h-auto p-0 font-semibold text-left justify-start"
+                    onClick={() => handleSort("totalExpected")}
+                  >
+                    Total Expected
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    className="h-auto p-0 font-semibold text-left justify-start"
                     onClick={() => handleSort("base_price")}
                   >
                     Price
@@ -698,7 +712,7 @@ const Materials = () => {
             <TableBody>
               {materials?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                     No materials found. Create your first material to get started.
                   </TableCell>
                 </TableRow>
@@ -734,10 +748,51 @@ const Materials = () => {
                     </TableCell>
                     <TableCell>{material.finish || "—"}</TableCell>
                     <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{material.currentStock || 0}</span>
+                        <span className="text-xs text-muted-foreground">{material.unit}</span>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${material.statusColor}`}
+                        >
+                          {material.stockStatus === 'critical' ? 'Critical' : 
+                           material.stockStatus === 'low' ? 'Low' : 'Good'}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{material.orderedQty || 0}</span>
+                        <span className="text-xs text-muted-foreground">{material.unit}</span>
+                        {material.orderedQty > 0 && (
+                          <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                            Incoming
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{material.totalExpected || 0}</span>
+                        <span className="text-xs text-muted-foreground">{material.unit}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {material.base_price ? `₹${material.base_price}/${material.unit}` : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {material.stockStatus === 'critical' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate('/purchase')}
+                            title="Create Purchase Order"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                          >
+                            <Truck className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
