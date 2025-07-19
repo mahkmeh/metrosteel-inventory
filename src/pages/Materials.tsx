@@ -352,6 +352,7 @@ const Materials = () => {
             try {
               const batchResult = await createBatch.mutateAsync({
                 sku_id: materialResult.id,
+                batch_code: batch.batch_code,
                 total_weight_kg: batch.total_weight_kg,
                 available_weight_kg: batch.total_weight_kg,
                 heat_number: batch.heat_number,
@@ -363,7 +364,7 @@ const Materials = () => {
             } catch (batchError: any) {
               console.error("Error creating batch:", batch.batch_code, batchError);
               
-              // Handle batch-specific errors
+              // Enhanced batch-specific error handling
               if (batchError.message?.includes("duplicate key value violates unique constraint")) {
                 if (batchError.message.includes("batch_code") || batchError.message.includes("batches_batch_code_key")) {
                   batchErrors.push(`Batch code "${batch.batch_code}" already exists`);

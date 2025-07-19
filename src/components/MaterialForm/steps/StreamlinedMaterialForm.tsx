@@ -46,7 +46,6 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
   
   const [showDescription, setShowDescription] = useState(false);
   const [showBatchNotes, setShowBatchNotes] = useState<{[key: number]: boolean}>({});
-  const [batchCodeValidationStates, setBatchCodeValidationStates] = useState<{[key: number]: { batchCode: string, isValidating: boolean }}>({});
 
   // Get recent batch codes for reference
   const { data: recentBatchCodes = [] } = useRecentBatchCodes(5);
@@ -115,18 +114,6 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
         }
       });
       setShowBatchNotes(newShowBatchNotes);
-      
-      // Remove batch code validation state
-      const newValidationStates = { ...batchCodeValidationStates };
-      delete newValidationStates[index];
-      Object.keys(newValidationStates).forEach(key => {
-        const keyNum = parseInt(key);
-        if (keyNum > index) {
-          newValidationStates[keyNum - 1] = newValidationStates[keyNum];
-          delete newValidationStates[keyNum];
-        }
-      });
-      setBatchCodeValidationStates(newValidationStates);
     }
   };
 
@@ -136,14 +123,6 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
     );
     setBatches(updatedBatches);
     onFormDataChange({ ...formData, batches: updatedBatches });
-
-    // Update validation state for batch_code changes
-    if (field === 'batch_code') {
-      setBatchCodeValidationStates(prev => ({
-        ...prev,
-        [index]: { batchCode: value as string, isValidating: true }
-      }));
-    }
   };
 
   const toggleBatchNotes = (index: number) => {
@@ -155,23 +134,18 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
 
   const isSKUDuplicate = formData.sku && !isEditing && existingSKUs.includes(formData.sku);
 
-  // Component for batch code validation
-  const BatchCodeValidation: React.FC<{ batchCode: string; index: number }> = ({ batchCode, index }) => {
+  // Simplified batch code validation component
+  const BatchCodeValidation: React.FC<{ batchCode: string }> = ({ batchCode }) => {
     const { data: validation, isLoading } = useBatchCodeValidation(batchCode);
-    
-    useEffect(() => {
-      setBatchCodeValidationStates(prev => ({
-        ...prev,
-        [index]: { batchCode, isValidating: isLoading }
-      }));
-    }, [batchCode, isLoading, index]);
 
     if (!batchCode || batchCode.length < 2) return null;
     
     if (isLoading) {
-      return <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-      </div>;
+      return (
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+        </div>
+      );
     }
 
     return (
@@ -608,7 +582,8 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
         )}
 
         {batches.map((batch, index) => {
-          const batchCodeExists = batchCodeValidationStates[index]?.batchCode && batch.batch_code === batchCodeValidationStates[index]?.batchCode;
+          const { data: validation, isLoading: validationLoading } = useBatchCodeValidation(batch.batch_code);
+          const batchExists = validation?.exists && batch.batch_code.length >= 2;
           
           return (
             <Card key={index}>
@@ -635,20 +610,12 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
                         value={batch.batch_code}
                         onChange={(e) => updateBatch(index, "batch_code", e.target.value)}
                         placeholder="e.g., B2024001"
-                        className={
-                          batch.batch_code && batchCodeExists && 
-                          batchCodeValidationStates[index] && 
-                          !batchCodeValidationStates[index].isValidating
-                            ? "border-destructive" 
-                            : ""
-                        }
+                        className={batchExists ? "border-destructive" : ""}
                         required
                       />
-                      <BatchCodeValidation batchCode={batch.batch_code} index={index} />
+                      <BatchCodeValidation batchCode={batch.batch_code} />
                     </div>
-                    {batch.batch_code && batchCodeExists && 
-                     batchCodeValidationStates[index] && 
-                     !batchCodeValidationStates[index].isValidating && (
+                    {batchExists && (
                       <p className="text-xs text-destructive mt-1">This batch code already exists</p>
                     )}
                   </div>
