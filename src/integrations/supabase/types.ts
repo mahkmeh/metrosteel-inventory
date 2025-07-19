@@ -470,6 +470,7 @@ export type Database = {
       }
       purchase_order_items: {
         Row: {
+          batch_id: string | null
           created_at: string
           id: string
           line_total: number
@@ -483,6 +484,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          batch_id?: string | null
           created_at?: string
           id?: string
           line_total?: number
@@ -496,6 +498,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          batch_id?: string | null
           created_at?: string
           id?: string
           line_total?: number
@@ -508,7 +511,15 @@ export type Database = {
           unit_price?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_purchase_order_items_batch_id"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_orders: {
         Row: {
