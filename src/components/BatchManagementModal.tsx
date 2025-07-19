@@ -2,20 +2,16 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Package, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
+import { Package, AlertCircle } from "lucide-react";
 import { useBatches, useCreateBatch, Batch } from "@/hooks/useBatches";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useBatchCodeValidation } from "@/hooks/useBatchCodeValidation";
+import { UnifiedBatchForm } from "@/components/BatchForm/UnifiedBatchForm";
 
 interface BatchManagementModalProps {
   isOpen: boolean;
@@ -31,22 +27,16 @@ interface BatchManagementModalProps {
 
 export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagementModalProps) => {
   const [activeTab, setActiveTab] = useState("view");
-  const [formData, setFormData] = useState({
+  const [newBatches, setNewBatches] = useState([{
     batch_code: "",
-    total_weight_kg: "",
+    total_weight_kg: 0,
     heat_number: "",
     make: "",
-    quality_grade: "A",
-    compliance_status: "pending",
-    manufactured_date: "",
-    received_date: "",
-    expiry_date: "",
     notes: "",
-  });
+  }]);
 
   const { toast } = useToast();
   const createBatch = useCreateBatch();
-  const { data: batchValidation } = useBatchCodeValidation(formData.batch_code);
 
   // Fetch batches for this material
   const { data: batches = [], isLoading: batchesLoading, refetch } = useQuery({
@@ -70,71 +60,51 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
     enabled: !!material?.id && isOpen,
   });
 
-  // Fetch suppliers for dropdown
-  const { data: suppliers = [] } = useQuery({
-    queryKey: ["suppliers"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("suppliers")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("name");
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: isOpen,
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
     if (!material) return;
 
-    // Check for duplicate batch code
-    if (batchValidation?.exists) {
+    // Validate that at least one batch has required fields
+    const validBatches = newBatches.filter(batch => 
+      batch.batch_code.trim() && batch.total_weight_kg > 0
+    );
+
+    if (validBatches.length === 0) {
       toast({
-        title: "Duplicate Batch Code",
-        description: "This batch code already exists. Please use a different batch code.",
+        title: "No Valid Batches",
+        description: "Please add at least one batch with batch code and weight.",
         variant: "destructive",
       });
       return;
     }
 
-    const batchData = {
-      batch_code: formData.batch_code,
-      sku_id: material.id,
-      total_weight_kg: parseFloat(formData.total_weight_kg),
-      available_weight_kg: parseFloat(formData.total_weight_kg),
-      heat_number: formData.heat_number || undefined,
-      make: formData.make || undefined,
-      quality_grade: formData.quality_grade,
-      compliance_status: formData.compliance_status,
-      manufactured_date: formData.manufactured_date || undefined,
-      received_date: formData.received_date || undefined,
-      expiry_date: formData.expiry_date || undefined,
-      notes: formData.notes || undefined,
-    };
-
     try {
-      await createBatch.mutateAsync(batchData);
-      // Reset form
-      setFormData({
+      // Create batches one by one
+      for (const batch of validBatches) {
+        const batchData = {
+          batch_code: batch.batch_code,
+          sku_id: material.id,
+          total_weight_kg: batch.total_weight_kg,
+          available_weight_kg: batch.total_weight_kg,
+          heat_number: batch.heat_number || undefined,
+          make: batch.make || undefined,
+          notes: batch.notes || undefined,
+        };
+
+        await createBatch.mutateAsync(batchData);
+      }
+
+      // Reset form and switch to view tab
+      setNewBatches([{
         batch_code: "",
-        total_weight_kg: "",
+        total_weight_kg: 0,
         heat_number: "",
         make: "",
-        quality_grade: "A",
-        compliance_status: "pending",
-        manufactured_date: "",
-        received_date: "",
-        expiry_date: "",
         notes: "",
-      });
+      }]);
       setActiveTab("view");
       refetch();
     } catch (error) {
-      console.error("Error creating batch:", error);
+      console.error("Error creating batches:", error);
     }
   };
 
@@ -150,8 +120,6 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
   const totalAvailableWeight = batches.reduce((sum, batch) => sum + (batch.available_weight_kg || 0), 0);
   const totalBatches = batches.length;
   const activeBatches = batches.filter(batch => batch.status === "active").length;
-
-  const batchCodeExists = batchValidation?.exists && formData.batch_code.length >= 2;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -219,8 +187,8 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
                   <TableHeader>
                     <TableRow>
                       <TableHead>Batch Code</TableHead>
-                      <TableHead>Weight (KG)</TableHead>
-                      <TableHead>Available</TableHead>
+                      <TableHead>Total Weight (KG)</TableHead>
+                      <TableHead>Available (KG)</TableHead>
                       <TableHead>Heat Number</TableHead>
                       <TableHead>Make</TableHead>
                       <TableHead>Status</TableHead>
@@ -248,156 +216,25 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
           </TabsContent>
 
           <TabsContent value="create" className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="batch_code">Batch Code *</Label>
-                  <div className="relative">
-                    <Input
-                      id="batch_code"
-                      required
-                      value={formData.batch_code}
-                      onChange={(e) => setFormData({ ...formData, batch_code: e.target.value })}
-                      placeholder="Enter batch code (e.g., 20G1-001)"
-                      className={batchCodeExists ? "border-destructive" : ""}
-                    />
-                    {formData.batch_code && formData.batch_code.length >= 2 && (
-                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                        {batchCodeExists ? (
-                          <AlertTriangle className="h-4 w-4 text-destructive" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {batchCodeExists && (
-                    <p className="text-xs text-destructive">This batch code already exists</p>
-                  )}
-                </div>
+            <UnifiedBatchForm
+              batches={newBatches}
+              onBatchesChange={setNewBatches}
+              canAddMultiple={true}
+              showTitle={true}
+            />
 
-                <div className="space-y-2">
-                  <Label htmlFor="total_weight_kg">Total Weight (KG) *</Label>
-                  <Input
-                    id="total_weight_kg"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    value={formData.total_weight_kg}
-                    onChange={(e) => setFormData({ ...formData, total_weight_kg: e.target.value })}
-                    placeholder="Enter batch weight in KG"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="heat_number">Heat Number</Label>
-                  <Input
-                    id="heat_number"
-                    value={formData.heat_number}
-                    onChange={(e) => setFormData({ ...formData, heat_number: e.target.value })}
-                    placeholder="Enter heat number"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="make">Make/Brand</Label>
-                  <Input
-                    id="make"
-                    value={formData.make}
-                    onChange={(e) => setFormData({ ...formData, make: e.target.value })}
-                    placeholder="Enter make or brand"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="quality_grade">Quality Grade</Label>
-                  <Select
-                    value={formData.quality_grade}
-                    onValueChange={(value) => setFormData({ ...formData, quality_grade: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="A">Grade A</SelectItem>
-                      <SelectItem value="B">Grade B</SelectItem>
-                      <SelectItem value="C">Grade C</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="compliance_status">Compliance Status</Label>
-                  <Select
-                    value={formData.compliance_status}
-                    onValueChange={(value) => setFormData({ ...formData, compliance_status: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="manufactured_date">Manufactured Date</Label>
-                  <Input
-                    id="manufactured_date"
-                    type="date"
-                    value={formData.manufactured_date}
-                    onChange={(e) => setFormData({ ...formData, manufactured_date: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="received_date">Received Date</Label>
-                  <Input
-                    id="received_date"
-                    type="date"
-                    value={formData.received_date}
-                    onChange={(e) => setFormData({ ...formData, received_date: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="expiry_date">Expiry Date</Label>
-                  <Input
-                    id="expiry_date"
-                    type="date"
-                    value={formData.expiry_date}
-                    onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Enter any additional notes about this batch"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setActiveTab("view")}>
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createBatch.isPending || !formData.batch_code || !formData.total_weight_kg || batchCodeExists}
-                >
-                  {createBatch.isPending ? "Creating..." : "Create Batch"}
-                </Button>
-              </div>
-            </form>
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => setActiveTab("view")}>
+                Cancel
+              </Button>
+              <Button 
+                type="button"
+                onClick={handleSubmit}
+                disabled={createBatch.isPending || newBatches.every(b => !b.batch_code || b.total_weight_kg <= 0)}
+              >
+                {createBatch.isPending ? "Creating..." : "Create Batches"}
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

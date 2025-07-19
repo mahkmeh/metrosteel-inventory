@@ -22,13 +22,29 @@ export const useBatchCodeValidation = (batchCode: string, debounceMs: number = 5
         return { exists: false, count: 0 };
       }
       
+      // Use case-insensitive search to handle variations like 14G-B1 vs 14G1-B1
       const { data, error } = await supabase
         .from("batches")
         .select("batch_code", { count: "exact" })
-        .eq("batch_code", debouncedBatchCode)
+        .ilike("batch_code", debouncedBatchCode)
         .limit(1);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Batch code validation error:", error);
+        // Also try exact match as fallback
+        const { data: exactData, error: exactError } = await supabase
+          .from("batches")
+          .select("batch_code", { count: "exact" })
+          .eq("batch_code", debouncedBatchCode)
+          .limit(1);
+
+        if (exactError) throw exactError;
+        
+        return { 
+          exists: (exactData?.length || 0) > 0,
+          count: exactData?.length || 0
+        };
+      }
       
       return { 
         exists: (data?.length || 0) > 0,

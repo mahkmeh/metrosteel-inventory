@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -5,17 +6,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Paperclip, Link, Plus, Trash2, X, AlertTriangle, CheckCircle } from "lucide-react";
+import { Plus, X, AlertTriangle, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecentBatchCodes } from "@/hooks/useBatchCodeValidation";
-import { BatchItem } from "../BatchItem";
+import { UnifiedBatchForm } from "../BatchForm/UnifiedBatchForm";
 
 interface Batch {
   id?: string;
   batch_code: string;
   total_weight_kg: number;
   heat_number?: string;
+  make?: string;
   notes?: string;
 }
 
@@ -41,100 +43,26 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
       batch_code: "",
       total_weight_kg: 0,
       heat_number: "",
+      make: "",
       notes: "",
     },
   ]);
   
   const [showDescription, setShowDescription] = useState(false);
-  const [showBatchNotes, setShowBatchNotes] = useState<{[key: number]: boolean}>({});
 
   // Get recent batch codes for reference
   const { data: recentBatchCodes = [] } = useRecentBatchCodes(5);
-
-  // Fetch recent batch numbers for reference (keep existing functionality)
-  const { data: recentBatches = [] } = useQuery({
-    queryKey: ["recent-batches", formData.sku],
-    queryFn: async () => {
-      if (!formData.sku) return [];
-      
-      const { data, error } = await supabase
-        .from("batches")
-        .select("batch_code")
-        .eq("sku_id", formData.id || "")
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-      if (error) {
-        // If no batches found for this specific SKU, get general recent batches
-        const { data: generalData, error: generalError } = await supabase
-          .from("batches")
-          .select("batch_code")
-          .order("created_at", { ascending: false })
-          .limit(3);
-        
-        if (generalError) throw generalError;
-        return generalData || [];
-      }
-      return data;
-    },
-    enabled: !!formData.sku
-  });
 
   const updateField = (field: string, value: string) => {
     onFormDataChange({ ...formData, [field]: value, batches });
   };
 
-  const addBatch = () => {
-    const newBatches = [
-      ...batches,
-      {
-        batch_code: "",
-        total_weight_kg: 0,
-        heat_number: "",
-        notes: "",
-      },
-    ];
+  const handleBatchesChange = (newBatches: Batch[]) => {
     setBatches(newBatches);
     onFormDataChange({ ...formData, batches: newBatches });
   };
 
-  const removeBatch = (index: number) => {
-    if (batches.length > 1) {
-      const updatedBatches = batches.filter((_, i) => i !== index);
-      setBatches(updatedBatches);
-      onFormDataChange({ ...formData, batches: updatedBatches });
-      // Remove notes visibility state for removed batch
-      const newShowBatchNotes = { ...showBatchNotes };
-      delete newShowBatchNotes[index];
-      // Reindex remaining batch notes
-      Object.keys(newShowBatchNotes).forEach(key => {
-        const keyNum = parseInt(key);
-        if (keyNum > index) {
-          newShowBatchNotes[keyNum - 1] = newShowBatchNotes[keyNum];
-          delete newShowBatchNotes[keyNum];
-        }
-      });
-      setShowBatchNotes(newShowBatchNotes);
-    }
-  };
-
-  const updateBatch = (index: number, field: string, value: string | number) => {
-    const updatedBatches = batches.map((batch, i) =>
-      i === index ? { ...batch, [field]: value } : batch
-    );
-    setBatches(updatedBatches);
-    onFormDataChange({ ...formData, batches: updatedBatches });
-  };
-
-  const toggleBatchNotes = (index: number) => {
-    setShowBatchNotes(prev => ({
-      ...prev,
-      [index]: !prev[index]
-    }));
-  };
-
   const isSKUDuplicate = formData.sku && !isEditing && existingSKUs.includes(formData.sku);
-
 
   const renderDimensionFields = () => {
     switch (category) {
@@ -541,16 +469,10 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
         </CardContent>
       </Card>
 
-      {/* Batch Management Section */}
+      {/* Batch Management Section using Unified Component */}
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">Initial Batches</h3>
-          <Button onClick={addBatch} variant="outline" size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Batch
-          </Button>
-        </div>
-
+        <h3 className="text-lg font-medium">Initial Batches</h3>
+        
         {/* Recent batch numbers reference */}
         {recentBatchCodes.length > 0 && (
           <div className="text-xs text-muted-foreground">
@@ -558,18 +480,12 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
           </div>
         )}
 
-        {batches.map((batch, index) => (
-          <BatchItem
-            key={index}
-            batch={batch}
-            index={index}
-            onUpdate={updateBatch}
-            onRemove={removeBatch}
-            canRemove={batches.length > 1}
-            showNotes={showBatchNotes[index]}
-            onToggleNotes={toggleBatchNotes}
-          />
-        ))}
+        <UnifiedBatchForm
+          batches={batches}
+          onBatchesChange={handleBatchesChange}
+          canAddMultiple={true}
+          showTitle={false}
+        />
       </div>
     </div>
   );
