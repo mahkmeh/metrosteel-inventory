@@ -80,6 +80,20 @@ const Materials = () => {
     }
   });
 
+  // Query to check for existing SKUs for validation
+  const { data: existingSKUs = [] } = useQuery({
+    queryKey: ["existing-skus"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("materials")
+        .select("sku")
+        .eq("is_active", true);
+      
+      if (error) throw error;
+      return data.map(item => item.sku);
+    }
+  });
+
   const createMaterial = useMutation({
     mutationFn: async (material: any) => {
       if (editingMaterial) {
@@ -107,6 +121,7 @@ const Materials = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["materials"] });
+      queryClient.invalidateQueries({ queryKey: ["existing-skus"] });
       setIsDialogOpen(false);
       setEditingMaterial(null);
       resetForm();
@@ -115,10 +130,27 @@ const Materials = () => {
         description: editingMaterial ? "Material updated successfully" : "Material created successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Material creation/update error:", error);
+      
+      let errorMessage = editingMaterial ? "Failed to update material" : "Failed to create material";
+      
+      // Handle specific database constraint errors
+      if (error.message?.includes("duplicate key value violates unique constraint")) {
+        if (error.message.includes("materials_sku_key")) {
+          errorMessage = `SKU "${formData.sku}" already exists. Please use a different SKU or edit the existing material.`;
+        } else {
+          errorMessage = "A material with these details already exists. Please check for duplicates.";
+        }
+      } else if (error.message?.includes("violates foreign key constraint")) {
+        errorMessage = "Invalid reference data. Please check your selections.";
+      } else if (error.message?.includes("violates not-null constraint")) {
+        errorMessage = "Please fill in all required fields.";
+      }
+      
       toast({
         title: "Error",
-        description: editingMaterial ? "Failed to update material" : "Failed to create material",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -215,6 +247,11 @@ const Materials = () => {
     // Check required fields common to all categories
     if (!formData.grade || !formData.sku || !formData.make || !formData.name) return false;
     
+    // Check for duplicate SKU (only for new materials)
+    if (!editingMaterial && formData.sku && existingSKUs.includes(formData.sku)) {
+      return false;
+    }
+    
     // Check if at least one batch exists with required fields
     if (!formData.batches || formData.batches.length === 0) return false;
     
@@ -259,6 +296,16 @@ const Materials = () => {
   const createBatch = useCreateBatch();
 
   const handleSubmit = async () => {
+    // Validate SKU before submission for new materials
+    if (!editingMaterial && formData.sku && existingSKUs.includes(formData.sku)) {
+      toast({
+        title: "Duplicate SKU",
+        description: `SKU "${formData.sku}" already exists. Please use a different SKU.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const materialData: any = {
       name: formData.name,
       category: formData.category,
@@ -296,18 +343,33 @@ const Materials = () => {
       
       // Then create batches if not editing
       if (!editingMaterial && formData.batches && formData.batches.length > 0) {
+        console.log("Creating batches:", formData.batches);
         for (const batch of formData.batches) {
           if (batch.batch_code && batch.total_weight_kg > 0) {
-            await createBatch.mutateAsync({
-              sku_id: materialResult.id,
-              total_weight_kg: batch.total_weight_kg,
-              available_weight_kg: batch.total_weight_kg,
-              heat_number: batch.heat_number,
-              make: batch.make || formData.make,
-              notes: batch.notes,
-            });
+            try {
+              await createBatch.mutateAsync({
+                sku_id: materialResult.id,
+                total_weight_kg: batch.total_weight_kg,
+                available_weight_kg: batch.total_weight_kg,
+                heat_number: batch.heat_number,
+                make: batch.make || formData.make,
+                notes: batch.notes,
+              });
+              console.log("Created batch:", batch.batch_code);
+            } catch (batchError) {
+              console.error("Error creating batch:", batch.batch_code, batchError);
+              toast({
+                title: "Batch Creation Warning",
+                description: `Material created but failed to create batch ${batch.batch_code}`,
+                variant: "destructive",
+              });
+            }
           }
         }
+        toast({
+          title: "Success",
+          description: `Material created with ${formData.batches.length} batches`,
+        });
       }
     } catch (error) {
       console.error("Error creating material and batches:", error);
@@ -359,6 +421,8 @@ const Materials = () => {
           subType=""
           formData={formData}
           onFormDataChange={setFormData}
+          existingSKUs={existingSKUs}
+          isEditing={!!editingMaterial}
         />
       );
     }
@@ -371,10 +435,20 @@ const Materials = () => {
           subType={formData.pipe_type || formData.bar_shape || ""}
           formData={formData}
           onFormDataChange={setFormData}
+          existingSKUs={existingSKUs}
+          isEditing={!!editingMaterial}
         />
       );
     }
 
+    return null;
+  };
+
+  const getSKUValidationMessage = () => {
+    if (!formData.sku || editingMaterial) return null;
+    if (existingSKUs.includes(formData.sku)) {
+      return "This SKU already exists. Please use a different SKU.";
+    }
     return null;
   };
 
@@ -448,6 +522,14 @@ const Materials = () => {
               
               {renderCurrentStep()}
               
+              {getSKUValidationMessage() && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                  <p className="text-sm text-destructive font-medium">
+                    {getSKUValidationMessage()}
+                  </p>
+                </div>
+              )}
+              
               <div className="flex justify-between">
                 <Button 
                   type="button" 
@@ -512,6 +594,7 @@ const Materials = () => {
         </div>
       </div>
 
+      {/* loading state and table */}
       {isLoading ? (
         <div className="flex justify-center items-center h-32">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

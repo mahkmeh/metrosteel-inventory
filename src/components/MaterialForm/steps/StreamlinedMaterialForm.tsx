@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -6,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Paperclip, Link, Plus, Trash2, X } from "lucide-react";
+import { Paperclip, Link, Plus, Trash2, X, AlertTriangle, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,6 +22,8 @@ interface StreamlinedMaterialFormProps {
   onFormDataChange: (data: any) => void;
   category: string;
   subType: string;
+  existingSKUs?: string[];
+  isEditing?: boolean;
 }
 
 export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = ({
@@ -30,6 +31,8 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
   onFormDataChange,
   category,
   subType,
+  existingSKUs = [],
+  isEditing = false,
 }) => {
   const [batches, setBatches] = useState<Batch[]>([
     {
@@ -77,7 +80,7 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
   };
 
   const addBatch = () => {
-    setBatches([
+    const newBatches = [
       ...batches,
       {
         batch_code: "",
@@ -85,7 +88,9 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
         heat_number: "",
         notes: "",
       },
-    ]);
+    ];
+    setBatches(newBatches);
+    onFormDataChange({ ...formData, batches: newBatches });
   };
 
   const removeBatch = (index: number) => {
@@ -122,6 +127,8 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
       [index]: !prev[index]
     }));
   };
+
+  const isSKUDuplicate = formData.sku && !isEditing && existingSKUs.includes(formData.sku);
 
   const renderDimensionFields = () => {
     switch (category) {
@@ -422,13 +429,28 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
             
             <div>
               <Label htmlFor="sku">SKU *</Label>
-              <Input
-                id="sku"
-                value={formData.sku || ""}
-                onChange={(e) => updateField("sku", e.target.value)}
-                placeholder="e.g., SS304-SHT-150x1219"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="sku"
+                  value={formData.sku || ""}
+                  onChange={(e) => updateField("sku", e.target.value)}
+                  placeholder="e.g., SS304-SHT-150x1219"
+                  className={isSKUDuplicate ? "border-destructive" : ""}
+                  required
+                />
+                {formData.sku && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                    {isSKUDuplicate ? (
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    )}
+                  </div>
+                )}
+              </div>
+              {isSKUDuplicate && (
+                <p className="text-xs text-destructive mt-1">This SKU already exists</p>
+              )}
             </div>
 
             <div>
