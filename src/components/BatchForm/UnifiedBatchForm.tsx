@@ -114,12 +114,15 @@ export const UnifiedBatchForm: React.FC<UnifiedBatchFormProps> = ({
       {showTitle && (
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-medium">Batches</h3>
-          {canAddMultiple && (
-            <Button onClick={addBatch} variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Batch
-            </Button>
-          )}
+        </div>
+      )}
+      
+      {canAddMultiple && (
+        <div className="flex justify-end mb-4">
+          <Button onClick={addBatch} variant="outline" size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Batch
+          </Button>
         </div>
       )}
 
