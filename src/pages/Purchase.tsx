@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { KpiCard } from "@/components/KpiCard";
 import { usePurchaseKpis } from "@/hooks/usePurchaseKpis";
+import { BatchSelectionForPO } from "@/components/BatchSelectionForPO";
 
 const Purchase = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -137,8 +138,15 @@ const Purchase = () => {
           .eq("purchase_order_id", editingOrder.id);
 
         const itemsWithOrderId = orderItems.map(item => ({
-          ...item,
-          purchase_order_id: editingOrder.id
+          material_id: item.material_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
+          order_type: item.order_type,
+          linked_sales_order_id: item.linked_sales_order_id,
+          notes: item.notes,
+          purchase_order_id: editingOrder.id,
+          batch_id: item.batch_id || null // Include batch_id
         }));
         
         const { error: itemsError } = await supabase
@@ -154,18 +162,39 @@ const Purchase = () => {
         if (error) throw error;
 
         const itemsWithOrderId = orderItems.map(item => ({
-          ...item,
-          purchase_order_id: newOrder.id
+          material_id: item.material_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
+          order_type: item.order_type,
+          linked_sales_order_id: item.linked_sales_order_id,
+          notes: item.notes,
+          purchase_order_id: newOrder.id,
+          batch_id: item.batch_id || null // Include batch_id
         }));
         
         const { error: itemsError } = await supabase
           .from("purchase_order_items")
           .insert(itemsWithOrderId);
         if (itemsError) throw itemsError;
+
+        // Link batches to the purchase order
+        for (const item of orderItems) {
+          if (item.batch_id) {
+            await supabase
+              .from("batches")
+              .update({ 
+                purchase_order_id: newOrder.id,
+                supplier_id: orderWithTotal.supplier_id
+              })
+              .eq("id", item.batch_id);
+          }
+        }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["batches"] });
       toast({
         title: "Success",
         description: `Purchase order ${editingOrder ? "updated" : "created"} successfully`,
@@ -282,6 +311,8 @@ const Purchase = () => {
       order_type: "stock",
       linked_sales_order_id: null,
       notes: "",
+      batch_id: null, // Add batch_id field
+      selected_batch: null, // Add selected_batch for UI
     };
 
     setOrderItems([...orderItems, newItem]);
@@ -296,6 +327,28 @@ const Purchase = () => {
       updatedItems[index].line_total = updatedItems[index].quantity * updatedItems[index].unit_price;
     }
     
+    setOrderItems(updatedItems);
+  };
+
+  const handleBatchSelect = (index: number, batch: any) => {
+    const updatedItems = [...orderItems];
+    updatedItems[index] = { 
+      ...updatedItems[index], 
+      batch_id: batch.id,
+      selected_batch: batch 
+    };
+    setOrderItems(updatedItems);
+  };
+
+  const handleBatchCreate = (index: number, batchData: any) => {
+    // For now, we'll create the batch when the PO is saved
+    // Store the batch data temporarily in the order item
+    const updatedItems = [...orderItems];
+    updatedItems[index] = { 
+      ...updatedItems[index], 
+      new_batch_data: batchData,
+      selected_batch: { batch_code: batchData.batch_code, ...batchData }
+    };
     setOrderItems(updatedItems);
   };
 
@@ -386,7 +439,7 @@ const Purchase = () => {
                 {editingOrder ? "Edit Purchase Order" : "Create Purchase Order"}
               </DialogTitle>
               <DialogDescription className="text-center">
-                {editingOrder ? "Update purchase order information and items" : "Create a new purchase order with line items"}
+                {editingOrder ? "Update purchase order information and items" : "Create a new purchase order with line items and batch tracking"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -627,6 +680,16 @@ const Purchase = () => {
                                     </Select>
                                   </div>
                                 )}
+
+                                {/* Batch Selection Component */}
+                                <div className="border rounded-lg p-3 bg-muted/30">
+                                  <BatchSelectionForPO
+                                    materialId={item.material_id}
+                                    selectedBatch={item.selected_batch}
+                                    onBatchSelect={(batch) => handleBatchSelect(index, batch)}
+                                    onCreateBatch={(batchData) => handleBatchCreate(index, batchData)}
+                                  />
+                                </div>
 
                                 <div>
                                   <Label>Notes</Label>
