@@ -468,6 +468,99 @@ export type Database = {
         }
         Relationships: []
       }
+      payables: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          original_amount: number
+          outstanding_amount: number
+          paid_amount: number
+          purchase_invoice_id: string
+          status: string
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          original_amount?: number
+          outstanding_amount?: number
+          paid_amount?: number
+          purchase_invoice_id: string
+          status?: string
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          original_amount?: number
+          outstanding_amount?: number
+          paid_amount?: number
+          purchase_invoice_id?: string
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchase_invoices: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          notes: string | null
+          purchase_order_id: string
+          received_date: string | null
+          status: string
+          subtotal_amount: number
+          supplier_id: string
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number: string
+          notes?: string | null
+          purchase_order_id: string
+          received_date?: string | null
+          status?: string
+          subtotal_amount?: number
+          supplier_id: string
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          notes?: string | null
+          purchase_order_id?: string
+          received_date?: string | null
+          status?: string
+          subtotal_amount?: number
+          supplier_id?: string
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       purchase_order_items: {
         Row: {
           batch_id: string | null
@@ -567,6 +660,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      purchase_return_items: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          id: string
+          line_total: number
+          material_id: string
+          notes: string | null
+          purchase_return_id: string
+          quantity_returned: number
+          return_reason: string | null
+          unit_price: number
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          line_total?: number
+          material_id: string
+          notes?: string | null
+          purchase_return_id: string
+          quantity_returned?: number
+          return_reason?: string | null
+          unit_price?: number
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          line_total?: number
+          material_id?: string
+          notes?: string | null
+          purchase_return_id?: string
+          quantity_returned?: number
+          return_reason?: string | null
+          unit_price?: number
+        }
+        Relationships: []
+      }
+      purchase_returns: {
+        Row: {
+          created_at: string
+          credit_note_date: string | null
+          credit_note_number: string | null
+          id: string
+          notes: string | null
+          purchase_invoice_id: string
+          purchase_order_id: string
+          return_date: string
+          return_number: string
+          return_reason: string | null
+          status: string
+          supplier_id: string
+          total_return_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_note_date?: string | null
+          credit_note_number?: string | null
+          id?: string
+          notes?: string | null
+          purchase_invoice_id: string
+          purchase_order_id: string
+          return_date?: string
+          return_number: string
+          return_reason?: string | null
+          status?: string
+          supplier_id: string
+          total_return_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_note_date?: string | null
+          credit_note_number?: string | null
+          id?: string
+          notes?: string | null
+          purchase_invoice_id?: string
+          purchase_order_id?: string
+          return_date?: string
+          return_number?: string
+          return_reason?: string | null
+          status?: string
+          supplier_id?: string
+          total_return_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       quotation_items: {
         Row: {
