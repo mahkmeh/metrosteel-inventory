@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useBatchesByMaterial, Batch } from "@/hooks/useBatches";
+import { useBatches, Batch } from "@/hooks/useBatches";
 import { Check, AlertTriangle } from "lucide-react";
 
 interface BatchSelection {
@@ -29,7 +29,8 @@ export const BatchSelector = ({
   mode = "multiple",
 }: BatchSelectorProps) => {
   const [selections, setSelections] = useState<BatchSelection[]>(selectedBatches);
-  const { data: batches = [], isLoading } = useBatchesByMaterial(materialId);
+  const { data: allBatches = [], isLoading } = useBatches();
+  const batches = allBatches.filter(batch => batch.sku_id === materialId);
 
   const handleBatchToggle = (batch: Batch, checked: boolean) => {
     if (mode === "single") {
