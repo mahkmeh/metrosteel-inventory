@@ -127,8 +127,6 @@ export const UnifiedBatchForm: React.FC<UnifiedBatchFormProps> = ({
       )}
 
       {batches.map((batch, index) => {
-        const { data: validation } = useBatchCodeValidation(batch.batch_code);
-        const batchExists = validation?.exists && batch.batch_code.length >= 2;
 
         return (
           <Card key={index}>
@@ -155,14 +153,10 @@ export const UnifiedBatchForm: React.FC<UnifiedBatchFormProps> = ({
                       value={batch.batch_code}
                       onChange={(e) => updateBatch(index, "batch_code", e.target.value)}
                       placeholder="e.g., 14G1-B1"
-                      className={batchExists ? "border-destructive" : ""}
                       required
                     />
                     <BatchCodeValidation batchCode={batch.batch_code} />
                   </div>
-                  {batchExists && (
-                    <p className="text-xs text-destructive mt-1">This batch code already exists</p>
-                  )}
                 </div>
 
                 <div>
