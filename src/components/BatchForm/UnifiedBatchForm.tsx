@@ -127,6 +127,7 @@ export const UnifiedBatchForm: React.FC<UnifiedBatchFormProps> = ({
       )}
 
       {batches.map((batch, index) => {
+        // Fixed hooks violation and batchExists reference error
 
         return (
           <Card key={index}>
