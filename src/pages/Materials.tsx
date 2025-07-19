@@ -352,7 +352,6 @@ const Materials = () => {
             try {
               const batchResult = await createBatch.mutateAsync({
                 sku_id: materialResult.id,
-                batch_code: batch.batch_code,
                 total_weight_kg: batch.total_weight_kg,
                 available_weight_kg: batch.total_weight_kg,
                 heat_number: batch.heat_number,
