@@ -5,20 +5,57 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Plus, Search, Calendar, DollarSign } from "lucide-react";
+import { CreditCard, Search, Eye, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
 
 const Payables = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Placeholder for future implementation
   const { data: payables = [], isLoading } = useQuery({
     queryKey: ["payables"],
     queryFn: async () => {
-      // This will be implemented when we create the payables module
-      return [];
+      const { data, error } = await (supabase as any)
+        .from("payables")
+        .select(`
+          *,
+          suppliers(name, payment_terms),
+          purchase_invoices(invoice_number, invoice_date)
+        `)
+        .order("due_date", { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
     }
   });
+
+  const filteredPayables = payables.filter((payable: any) =>
+    payable.suppliers?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    payable.purchase_invoices?.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "outstanding": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "partial": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "paid": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getAgingColor = (dueDate: string) => {
+    const due = new Date(dueDate);
+    const today = new Date();
+    const diffDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 3600 * 24));
+    
+    if (diffDays > 90) return "text-red-600 font-semibold";
+    if (diffDays > 60) return "text-orange-600 font-semibold";
+    if (diffDays > 30) return "text-yellow-600 font-semibold";
+    if (diffDays > 0) return "text-blue-600";
+    return "text-green-600";
+  };
+
+  const totalOutstanding = payables.reduce((sum: number, p: any) => sum + (p.outstanding_amount || 0), 0);
 
   return (
     <div className="container mx-auto py-6">
@@ -28,12 +65,18 @@ const Payables = () => {
             <CreditCard className="h-8 w-8" />
             Payables
           </h1>
-          <p className="text-muted-foreground">Manage supplier payments and outstanding balances</p>
+          <p className="text-muted-foreground">Track outstanding payments to suppliers</p>
         </div>
-        <Button disabled>
-          <Plus className="h-4 w-4 mr-2" />
-          Record Payment
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Total Outstanding</p>
+            <p className="text-2xl font-bold">₹{totalOutstanding.toLocaleString()}</p>
+          </div>
+          <Button>
+            <DollarSign className="h-4 w-4 mr-2" />
+            Record Payment
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6">
@@ -48,57 +91,69 @@ const Payables = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹0</div>
-            <p className="text-xs text-muted-foreground">Across all suppliers</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Due Today</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹0</div>
-            <p className="text-xs text-muted-foreground">Payment due today</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overdue</CardTitle>
-            <Calendar className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">₹0</div>
-            <p className="text-xs text-muted-foreground">Past due payments</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Account Payables</CardTitle>
+          <CardTitle>Outstanding Payables</CardTitle>
           <CardDescription>
-            This module will track outstanding supplier invoices, payment schedules, 
-            and payment processing with aging reports.
+            Monitor payment obligations and aging analysis
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium mb-2">Payables Management Module</h3>
-            <p className="text-sm max-w-md mx-auto">
-              Features will include payment scheduling, aging reports, supplier statements, 
-              and integration with accounting systems.
-            </p>
-          </div>
+          {isLoading ? (
+            <div className="text-center py-8">Loading payables...</div>
+          ) : filteredPayables.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No Payables Found</h3>
+              <p className="text-sm">No outstanding payables match your search criteria.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Invoice Date</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Original Amount</TableHead>
+                  <TableHead>Paid Amount</TableHead>
+                  <TableHead>Outstanding</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPayables.map((payable: any) => (
+                  <TableRow key={payable.id}>
+                    <TableCell className="font-medium">{payable.suppliers?.name}</TableCell>
+                    <TableCell>{payable.purchase_invoices?.invoice_number}</TableCell>
+                    <TableCell>
+                      {payable.purchase_invoices?.invoice_date 
+                        ? format(new Date(payable.purchase_invoices.invoice_date), "dd/MM/yyyy")
+                        : "-"
+                      }
+                    </TableCell>
+                    <TableCell className={payable.due_date ? getAgingColor(payable.due_date) : ""}>
+                      {payable.due_date ? format(new Date(payable.due_date), "dd/MM/yyyy") : "-"}
+                    </TableCell>
+                    <TableCell>₹{payable.original_amount?.toLocaleString()}</TableCell>
+                    <TableCell>₹{payable.paid_amount?.toLocaleString()}</TableCell>
+                    <TableCell className="font-semibold">₹{payable.outstanding_amount?.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(payable.status)}>
+                        {payable.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
