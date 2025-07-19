@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Materials from "./pages/Materials";
+import MaterialDetails from "./pages/MaterialDetails";
 import Customers from "./pages/Customers";
 import Quotations from "./pages/Quotations";
 import Sales from "./pages/Sales";
@@ -29,6 +30,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="materials" element={<Materials />} />
+                <Route path="materials/:id" element={<MaterialDetails />} />
                 <Route path="customers" element={<Customers />} />
                 <Route path="quotations" element={<Quotations />} />
                 <Route path="purchase" element={<Purchase />} />

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import { BatchManagementModal } from "@/components/BatchManagementModal";
 import { useCreateBatch } from "@/hooks/useBatches";
 
 const Materials = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<any>(null);
@@ -181,28 +183,7 @@ const Materials = () => {
   };
 
   const handleEdit = (material: any) => {
-    setEditingMaterial(material);
-    setFormData({
-      name: material.name || "",
-      category: material.category || "",
-      grade: material.grade || "",
-      sku: material.sku || "",
-      make: material.make || "",
-      unit: material.unit || "KG",
-      base_price: material.base_price?.toString() || "",
-      description: material.description || "",
-      thickness: material.thickness?.toString() || "",
-      width: material.width?.toString() || "",
-      length: material.length?.toString() || "",
-      diameter: material.diameter?.toString() || "",
-      pipe_type: material.pipe_type || "",
-      bar_shape: material.bar_shape || "",
-      size_description: material.size_description || "",
-      finish: material.finish || "",
-      batches: [],
-    });
-    setCurrentStep(1);
-    setIsDialogOpen(true);
+    navigate(`/materials/${material.id}`);
   };
 
   const handleSort = (field: string) => {
