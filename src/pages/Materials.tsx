@@ -14,6 +14,7 @@ import { MaterialFormSteps } from "@/components/MaterialForm/MaterialFormSteps";
 import { CategoryStep } from "@/components/MaterialForm/steps/CategoryStep";
 import { SubTypeStep } from "@/components/MaterialForm/steps/SubTypeStep";
 import { CombinedFormStep } from "@/components/MaterialForm/steps/CombinedFormStep";
+import { BatchManagementModal } from "@/components/BatchManagementModal";
 
 const Materials = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,7 +22,9 @@ const Materials = () => {
   const [editingMaterial, setEditingMaterial] = useState<any>(null);
   const [sortField, setSortField] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  
+  const [batchManagementOpen, setBatchManagementOpen] = useState(false);
+  const [selectedMaterialForBatch, setSelectedMaterialForBatch] = useState<any>(null);
+
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -289,6 +292,17 @@ const Materials = () => {
     }
 
     createMaterial.mutate(materialData);
+  };
+
+  const handleManageBatches = (material: any) => {
+    setSelectedMaterialForBatch({
+      id: material.id,
+      name: material.name,
+      sku: material.sku,
+      category: material.category,
+      grade: material.grade,
+    });
+    setBatchManagementOpen(true);
   };
 
   const renderCurrentStep = () => {
@@ -588,13 +602,23 @@ const Materials = () => {
                       {material.base_price ? `₹${material.base_price}/${material.unit}` : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(material)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleManageBatches(material)}
+                          title="Manage Batches"
+                        >
+                          <Package className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(material)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -603,6 +627,16 @@ const Materials = () => {
           </Table>
         </div>
       )}
+
+      {/* Batch Management Modal */}
+      <BatchManagementModal
+        isOpen={batchManagementOpen}
+        onClose={() => {
+          setBatchManagementOpen(false);
+          setSelectedMaterialForBatch(null);
+        }}
+        material={selectedMaterialForBatch}
+      />
     </div>
   );
 };
