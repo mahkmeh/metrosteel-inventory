@@ -172,9 +172,9 @@ export const BatchSelectionForPO = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="A">Grade A</SelectItem>
-                    <SelectItem value="B">Grade B</SelectItem>
-                    <SelectItem value="C">Grade C</SelectItem>
+                    <SelectItem value="A">A</SelectItem>
+                    <SelectItem value="B">B</SelectItem>
+                    <SelectItem value="C">C</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

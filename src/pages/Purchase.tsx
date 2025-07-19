@@ -433,303 +433,327 @@ const Purchase = () => {
               Add Purchase Order
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-center">
-                {editingOrder ? "Edit Purchase Order" : "Create Purchase Order"}
-              </DialogTitle>
-              <DialogDescription className="text-center">
-                {editingOrder ? "Update purchase order information and items" : "Create a new purchase order with line items and batch tracking"}
-              </DialogDescription>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+            <DialogHeader className="border-b pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-xl">
+                    {editingOrder ? "Edit Purchase Order" : "Create Purchase Order"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingOrder ? "Update purchase order details" : "Create a new purchase order with materials and batch tracking"}
+                  </DialogDescription>
+                </div>
+                <Button type="button" variant="outline" onClick={resetForm}>
+                  Cancel
+                </Button>
+              </div>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Header Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Order Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="po_number">PO Number *</Label>
-                      <Input
-                        id="po_number"
-                        value={formData.po_number}
-                        onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="supplier_id">Supplier *</Label>
-                      <Select
-                        value={formData.supplier_id}
-                        onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select supplier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {suppliers?.map((supplier) => (
-                            <SelectItem key={supplier.id} value={supplier.id}>
-                              {supplier.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="order_date">Order Date</Label>
-                      <Input
-                        id="order_date"
-                        type="date"
-                        value={formData.order_date}
-                        onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="expected_delivery">Expected Delivery</Label>
-                      <Input
-                        id="expected_delivery"
-                        type="date"
-                        value={formData.expected_delivery}
-                        onChange={(e) => setFormData({ ...formData, expected_delivery: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="status">Status</Label>
-                      <Select
-                        value={formData.status}
-                        onValueChange={(value) => setFormData({ ...formData, status: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="ordered">Ordered</SelectItem>
-                          <SelectItem value="received">Received</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+            
+            <div className="flex h-[calc(90vh-200px)] overflow-hidden">
+              {/* Left Side - Form */}
+              <div className="flex-1 overflow-y-auto pr-6">
+                <form onSubmit={handleSubmit} className="space-y-6 py-4">
+                  {/* Basic Information */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Basic Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="po_number">PO Number</Label>
+                          <Input
+                            id="po_number"
+                            value={formData.po_number}
+                            onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
+                            placeholder="Enter PO number"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="supplier_id">Supplier</Label>
+                          <Select
+                            value={formData.supplier_id}
+                            onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select supplier" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {suppliers?.map((supplier) => (
+                                <SelectItem key={supplier.id} value={supplier.id}>
+                                  {supplier.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="order_date">Order Date</Label>
+                          <Input
+                            id="order_date"
+                            type="date"
+                            value={formData.order_date}
+                            onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="expected_delivery">Expected Delivery</Label>
+                          <Input
+                            id="expected_delivery"
+                            type="date"
+                            value={formData.expected_delivery}
+                            onChange={(e) => setFormData({ ...formData, expected_delivery: e.target.value })}
+                          />
+                        </div>
+                      </div>
 
-              {/* Order Items */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Order Items</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Add Items Section */}
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <div className="flex-1">
+                      <div>
+                        <Label htmlFor="status">Status</Label>
+                        <Select
+                          value={formData.status}
+                          onValueChange={(value) => setFormData({ ...formData, status: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="ordered">Ordered</SelectItem>
+                            <SelectItem value="received">Received</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="notes">Notes</Label>
+                        <Textarea
+                          id="notes"
+                          value={formData.notes}
+                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                          rows={3}
+                          placeholder="Order notes"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Materials */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Materials</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex gap-2">
                         <Input
                           placeholder="Search materials by name or SKU..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full"
+                          className="flex-1"
                         />
+                        <Button 
+                          type="button" 
+                          variant="outline"
+                          onClick={() => setShowProductModal(true)}
+                        >
+                          <Search className="h-4 w-4 mr-2" />
+                          Browse
+                        </Button>
                       </div>
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={() => setShowProductModal(true)}
-                      >
-                        <Search className="h-4 w-4 mr-2" />
-                        Browse
-                      </Button>
-                    </div>
 
-                    {/* Search Results */}
-                    {searchQuery && filteredMaterials && filteredMaterials.length > 0 && (
-                      <div className="border rounded-lg max-h-48 overflow-y-auto">
-                        {filteredMaterials.slice(0, 5).map((material) => {
-                          const stockInfo = getStockInfo(material);
-                          return (
-                            <div
-                              key={material.id}
-                              className="p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 transition-colors"
-                              onClick={() => addMaterialToOrder(material)}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="font-medium">{material.name}</div>
-                                  <div className="text-sm text-muted-foreground">
-                                    SKU: {material.sku} • {material.unit}
+                      {/* Search Results */}
+                      {searchQuery && filteredMaterials && filteredMaterials.length > 0 && (
+                        <div className="border rounded-lg max-h-40 overflow-y-auto">
+                          {filteredMaterials.slice(0, 5).map((material) => {
+                            const stockInfo = getStockInfo(material);
+                            return (
+                              <div
+                                key={material.id}
+                                className="p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 transition-colors"
+                                onClick={() => addMaterialToOrder(material)}
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <div className="font-medium">{material.name}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      SKU: {material.sku} • ₹{material.base_price || 0}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="text-right space-y-1">
-                                  <div className="font-medium">₹{material.base_price || 0}</div>
                                   <Badge className={stockInfo.color}>
                                     {stockInfo.text}
                                   </Badge>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Selected Materials */}
+                      {orderItems.length > 0 && (
+                        <div className="space-y-3 max-h-80 overflow-y-auto">
+                          {orderItems.map((item, index) => (
+                            <Card key={index} className="border-l-4 border-l-primary">
+                              <CardContent className="p-3">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div>
+                                    <div className="font-medium text-sm">{item.material_name}</div>
+                                    <div className="text-xs text-muted-foreground">SKU: {item.material_sku}</div>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeOrderItem(index)}
+                                    className="h-6 w-6 p-0 text-destructive"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                  <div>
+                                    <Label className="text-xs">Quantity</Label>
+                                    <Input
+                                      type="number"
+                                      min="0.01"
+                                      step="0.01"
+                                      value={item.quantity}
+                                      onChange={(e) => updateOrderItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">Unit Price</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={item.unit_price}
+                                      onChange={(e) => updateOrderItem(index, "unit_price", parseFloat(e.target.value) || 0)}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">Total</Label>
+                                    <Input
+                                      value={`₹${item.line_total.toFixed(2)}`}
+                                      disabled
+                                      className="h-8 bg-muted text-xs"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <div>
+                                    <Label className="text-xs">Order Type</Label>
+                                    <RadioGroup
+                                      value={item.order_type}
+                                      onValueChange={(value) => updateOrderItem(index, "order_type", value)}
+                                      className="flex gap-4"
+                                    >
+                                      <div className="flex items-center space-x-1">
+                                        <RadioGroupItem value="stock" id={`stock-${index}`} className="h-3 w-3" />
+                                        <Label htmlFor={`stock-${index}`} className="text-xs">Stock</Label>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <RadioGroupItem value="customer_order" id={`customer-${index}`} className="h-3 w-3" />
+                                        <Label htmlFor={`customer-${index}`} className="text-xs">Customer Order</Label>
+                                      </div>
+                                    </RadioGroup>
+                                  </div>
+
+                                  {item.order_type === "customer_order" && (
+                                    <div>
+                                      <Label className="text-xs">Sales Order</Label>
+                                      <Select
+                                        value={item.linked_sales_order_id || ""}
+                                        onValueChange={(value) => updateOrderItem(index, "linked_sales_order_id", value || null)}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder="Select sales order" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {salesOrders?.map((order) => (
+                                            <SelectItem key={order.id} value={order.id}>
+                                              {order.so_number} - {order.customers?.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+
+                      {orderItems.length === 0 && (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          No materials added. Search and add materials above.
+                        </div>
+                      )}
+
+                      {orderItems.length > 0 && (
+                        <div className="flex justify-end pt-3 border-t">
+                          <div className="text-lg font-bold">
+                            Total: ₹{getTotalAmount().toFixed(2)}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={createOrderMutation.isPending || orderItems.length === 0}>
+                      {createOrderMutation.isPending ? "Saving..." : editingOrder ? "Update Order" : "Create Order"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Right Side - Batch Management */}
+              <div className="w-80 border-l pl-6">
+                <div className="sticky top-0">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold mb-2">Batch Management</h3>
+                    <p className="text-sm text-muted-foreground">Select or create batches for each material</p>
                   </div>
 
-                  {/* Order Items List */}
-                  {orderItems.length > 0 && (
-                    <div className="space-y-3">
+                  {orderItems.length > 0 ? (
+                    <div className="space-y-4 max-h-[calc(90vh-300px)] overflow-y-auto">
                       {orderItems.map((item, index) => (
-                        <Card key={index} className="border-l-4 border-l-primary">
-                          <CardContent className="p-4">
-                            <div className="space-y-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <div className="font-medium">{item.material_name}</div>
-                                  <div className="text-sm text-muted-foreground">SKU: {item.material_sku}</div>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeOrderItem(index)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-
-                              <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                  <Label>Quantity</Label>
-                                  <Input
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    value={item.quantity}
-                                    onChange={(e) => updateOrderItem(index, "quantity", parseFloat(e.target.value) || 0)}
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Unit Price</Label>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={item.unit_price}
-                                    onChange={(e) => updateOrderItem(index, "unit_price", parseFloat(e.target.value) || 0)}
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Line Total</Label>
-                                  <Input
-                                    value={`₹${item.line_total.toFixed(2)}`}
-                                    disabled
-                                    className="bg-muted"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div>
-                                  <Label className="text-sm font-medium mb-2 block">Order Type</Label>
-                                  <RadioGroup
-                                    value={item.order_type}
-                                    onValueChange={(value) => updateOrderItem(index, "order_type", value)}
-                                    className="flex gap-6"
-                                  >
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="stock" id={`stock-${index}`} />
-                                      <Label htmlFor={`stock-${index}`} className="text-sm">For Stock</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="customer_order" id={`customer-${index}`} />
-                                      <Label htmlFor={`customer-${index}`} className="text-sm">Against Customer Order</Label>
-                                    </div>
-                                  </RadioGroup>
-                                </div>
-
-                                {item.order_type === "customer_order" && (
-                                  <div>
-                                    <Label>Link to Sales Order</Label>
-                                    <Select
-                                      value={item.linked_sales_order_id || ""}
-                                      onValueChange={(value) => updateOrderItem(index, "linked_sales_order_id", value || null)}
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select sales order" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {salesOrders?.map((order) => (
-                                          <SelectItem key={order.id} value={order.id}>
-                                            {order.so_number} - {order.customers?.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                )}
-
-                                {/* Batch Selection Component */}
-                                <div className="border rounded-lg p-3 bg-muted/30">
-                                  <BatchSelectionForPO
-                                    materialId={item.material_id}
-                                    selectedBatch={item.selected_batch}
-                                    onBatchSelect={(batch) => handleBatchSelect(index, batch)}
-                                    onCreateBatch={(batchData) => handleBatchCreate(index, batchData)}
-                                  />
-                                </div>
-
-                                <div>
-                                  <Label>Notes</Label>
-                                  <Input
-                                    value={item.notes}
-                                    onChange={(e) => updateOrderItem(index, "notes", e.target.value)}
-                                    placeholder="Optional notes for this item"
-                                  />
-                                </div>
-                              </div>
-                            </div>
+                        <Card key={index}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm">{item.material_name}</CardTitle>
+                            <div className="text-xs text-muted-foreground">SKU: {item.material_sku}</div>
+                          </CardHeader>
+                          <CardContent className="p-3 pt-0">
+                            <BatchSelectionForPO
+                              materialId={item.material_id}
+                              selectedBatch={item.selected_batch}
+                              onBatchSelect={(batch) => handleBatchSelect(index, batch)}
+                              onCreateBatch={(batchData) => handleBatchCreate(index, batchData)}
+                            />
                           </CardContent>
                         </Card>
                       ))}
-
-                      <div className="flex justify-end pt-4 border-t">
-                        <div className="text-xl font-bold">
-                          Total: ₹{getTotalAmount().toFixed(2)}
-                        </div>
-                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      Add materials to manage batches
                     </div>
                   )}
-
-                  {orderItems.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No items added. Search and add materials above.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createOrderMutation.isPending || orderItems.length === 0}>
-                  {createOrderMutation.isPending ? "Saving..." : editingOrder ? "Update Order" : "Create Order"}
-                </Button>
+                </div>
               </div>
-            </form>
+            </div>
           </DialogContent>
 
           <ProductSelectionModal
