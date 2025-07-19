@@ -10,11 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Package, AlertCircle } from "lucide-react";
+import { Plus, Package, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
 import { useBatches, useCreateBatch, Batch } from "@/hooks/useBatches";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useBatchCodeValidation } from "@/hooks/useBatchCodeValidation";
 
 interface BatchManagementModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ interface BatchManagementModalProps {
 export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagementModalProps) => {
   const [activeTab, setActiveTab] = useState("view");
   const [formData, setFormData] = useState({
+    batch_code: "",
     total_weight_kg: "",
     heat_number: "",
     make: "",
@@ -44,6 +46,7 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
 
   const { toast } = useToast();
   const createBatch = useCreateBatch();
+  const { data: batchValidation } = useBatchCodeValidation(formData.batch_code);
 
   // Fetch batches for this material
   const { data: batches = [], isLoading: batchesLoading, refetch } = useQuery({
@@ -88,7 +91,18 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
     
     if (!material) return;
 
+    // Check for duplicate batch code
+    if (batchValidation?.exists) {
+      toast({
+        title: "Duplicate Batch Code",
+        description: "This batch code already exists. Please use a different batch code.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const batchData = {
+      batch_code: formData.batch_code,
       sku_id: material.id,
       total_weight_kg: parseFloat(formData.total_weight_kg),
       available_weight_kg: parseFloat(formData.total_weight_kg),
@@ -106,6 +120,7 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
       await createBatch.mutateAsync(batchData);
       // Reset form
       setFormData({
+        batch_code: "",
         total_weight_kg: "",
         heat_number: "",
         make: "",
@@ -123,15 +138,6 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
     }
   };
 
-  const getQualityBadgeColor = (grade: string) => {
-    switch (grade) {
-      case "A": return "bg-green-100 text-green-800";
-      case "B": return "bg-yellow-100 text-yellow-800";
-      case "C": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case "active": return "bg-green-100 text-green-800";
@@ -144,6 +150,8 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
   const totalAvailableWeight = batches.reduce((sum, batch) => sum + (batch.available_weight_kg || 0), 0);
   const totalBatches = batches.length;
   const activeBatches = batches.filter(batch => batch.status === "active").length;
+
+  const batchCodeExists = batchValidation?.exists && formData.batch_code.length >= 2;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -213,11 +221,9 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
                       <TableHead>Batch Code</TableHead>
                       <TableHead>Weight (KG)</TableHead>
                       <TableHead>Available</TableHead>
-                      <TableHead>Quality</TableHead>
                       <TableHead>Heat Number</TableHead>
                       <TableHead>Make</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -226,20 +232,12 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
                         <TableCell className="font-medium">{batch.batch_code}</TableCell>
                         <TableCell>{batch.total_weight_kg.toFixed(2)}</TableCell>
                         <TableCell>{batch.available_weight_kg.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge className={getQualityBadgeColor(batch.quality_grade)}>
-                            Grade {batch.quality_grade}
-                          </Badge>
-                        </TableCell>
                         <TableCell>{batch.heat_number || "N/A"}</TableCell>
                         <TableCell>{batch.make || "N/A"}</TableCell>
                         <TableCell>
                           <Badge className={getStatusBadgeColor(batch.status)}>
                             {batch.status}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(batch.created_at).toLocaleDateString()}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -253,6 +251,32 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="batch_code">Batch Code *</Label>
+                  <div className="relative">
+                    <Input
+                      id="batch_code"
+                      required
+                      value={formData.batch_code}
+                      onChange={(e) => setFormData({ ...formData, batch_code: e.target.value })}
+                      placeholder="Enter batch code (e.g., 20G1-001)"
+                      className={batchCodeExists ? "border-destructive" : ""}
+                    />
+                    {formData.batch_code && formData.batch_code.length >= 2 && (
+                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                        {batchCodeExists ? (
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {batchCodeExists && (
+                    <p className="text-xs text-destructive">This batch code already exists</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="total_weight_kg">Total Weight (KG) *</Label>
                   <Input
                     id="total_weight_kg"
@@ -264,23 +288,6 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
                     onChange={(e) => setFormData({ ...formData, total_weight_kg: e.target.value })}
                     placeholder="Enter batch weight in KG"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="quality_grade">Quality Grade</Label>
-                  <Select
-                    value={formData.quality_grade}
-                    onValueChange={(value) => setFormData({ ...formData, quality_grade: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="A">Grade A</SelectItem>
-                      <SelectItem value="B">Grade B</SelectItem>
-                      <SelectItem value="C">Grade C</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -301,6 +308,23 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
                     onChange={(e) => setFormData({ ...formData, make: e.target.value })}
                     placeholder="Enter make or brand"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="quality_grade">Quality Grade</Label>
+                  <Select
+                    value={formData.quality_grade}
+                    onValueChange={(value) => setFormData({ ...formData, quality_grade: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A">Grade A</SelectItem>
+                      <SelectItem value="B">Grade B</SelectItem>
+                      <SelectItem value="C">Grade C</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -368,7 +392,7 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={createBatch.isPending || !formData.total_weight_kg}
+                  disabled={createBatch.isPending || !formData.batch_code || !formData.total_weight_kg || batchCodeExists}
                 >
                   {createBatch.isPending ? "Creating..." : "Create Batch"}
                 </Button>

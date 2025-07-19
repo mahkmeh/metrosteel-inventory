@@ -306,6 +306,33 @@ const Materials = () => {
       return;
     }
 
+    // Validate batch codes for duplicates
+    if (formData.batches && formData.batches.length > 0) {
+      const duplicateBatchCodes = [];
+      for (const batch of formData.batches) {
+        if (batch.batch_code) {
+          const { data: existingBatch } = await supabase
+            .from("batches")
+            .select("batch_code")
+            .eq("batch_code", batch.batch_code)
+            .single();
+          
+          if (existingBatch) {
+            duplicateBatchCodes.push(batch.batch_code);
+          }
+        }
+      }
+      
+      if (duplicateBatchCodes.length > 0) {
+        toast({
+          title: "Duplicate Batch Codes",
+          description: `The following batch codes already exist: ${duplicateBatchCodes.join(", ")}`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     const materialData: any = {
       name: formData.name,
       category: formData.category,
@@ -351,6 +378,7 @@ const Materials = () => {
           if (batch.batch_code && batch.total_weight_kg > 0) {
             try {
               const batchResult = await createBatch.mutateAsync({
+                batch_code: batch.batch_code, // Use manual batch code
                 sku_id: materialResult.id,
                 total_weight_kg: batch.total_weight_kg,
                 available_weight_kg: batch.total_weight_kg,
