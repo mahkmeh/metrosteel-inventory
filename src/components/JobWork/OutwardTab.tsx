@@ -4,9 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, DollarSign, Package, CheckCircle } from "lucide-react";
+import { Plus, Edit, DollarSign, Package, CheckCircle, Eye } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { JobWorkFilters } from "@/components/JobWorkFilters";
+import { JobWorkOutwardModal } from "../JobWorkOutwardModal";
+import { useJobWorkTransformations } from "@/hooks/useJobWorkTransformations";
+import { format } from "date-fns";
 
 interface OutwardTabProps {
   onCreateOutward: () => void;
@@ -15,8 +18,11 @@ interface OutwardTabProps {
 export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("dcDate");
+  const [sortBy, setSortBy] = useState("created_at");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  
+  const { data: transformations = [], isLoading } = useJobWorkTransformations();
 
   // Mock data for outward entries with new/old material tracking
   const mockOutwardData = [

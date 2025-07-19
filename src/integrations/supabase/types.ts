@@ -14,6 +14,148 @@ export type Database = {
   }
   public: {
     Tables: {
+      batch_inventory: {
+        Row: {
+          available_kg: number | null
+          batch_id: string
+          created_at: string
+          id: string
+          last_updated: string
+          location_id: string
+          quantity_kg: number
+          reserved_kg: number
+          total_value: number | null
+          unit_cost_per_kg: number | null
+        }
+        Insert: {
+          available_kg?: number | null
+          batch_id: string
+          created_at?: string
+          id?: string
+          last_updated?: string
+          location_id: string
+          quantity_kg?: number
+          reserved_kg?: number
+          total_value?: number | null
+          unit_cost_per_kg?: number | null
+        }
+        Update: {
+          available_kg?: number | null
+          batch_id?: string
+          created_at?: string
+          id?: string
+          last_updated?: string
+          location_id?: string
+          quantity_kg?: number
+          reserved_kg?: number
+          total_value?: number | null
+          unit_cost_per_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_inventory_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_inventory_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batches: {
+        Row: {
+          available_weight_kg: number
+          batch_code: string
+          compliance_status: string | null
+          created_at: string
+          expiry_date: string | null
+          heat_number: string | null
+          id: string
+          make: string | null
+          manufactured_date: string | null
+          notes: string | null
+          purchase_order_id: string | null
+          quality_grade: string
+          received_date: string | null
+          reserved_weight_kg: number
+          sku_id: string
+          status: string
+          supplier_id: string | null
+          total_weight_kg: number
+          updated_at: string
+        }
+        Insert: {
+          available_weight_kg?: number
+          batch_code: string
+          compliance_status?: string | null
+          created_at?: string
+          expiry_date?: string | null
+          heat_number?: string | null
+          id?: string
+          make?: string | null
+          manufactured_date?: string | null
+          notes?: string | null
+          purchase_order_id?: string | null
+          quality_grade?: string
+          received_date?: string | null
+          reserved_weight_kg?: number
+          sku_id: string
+          status?: string
+          supplier_id?: string | null
+          total_weight_kg?: number
+          updated_at?: string
+        }
+        Update: {
+          available_weight_kg?: number
+          batch_code?: string
+          compliance_status?: string | null
+          created_at?: string
+          expiry_date?: string | null
+          heat_number?: string | null
+          id?: string
+          make?: string | null
+          manufactured_date?: string | null
+          notes?: string | null
+          purchase_order_id?: string | null
+          quality_grade?: string
+          received_date?: string | null
+          reserved_weight_kg?: number
+          sku_id?: string
+          status?: string
+          supplier_id?: string | null
+          total_weight_kg?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_sku_id_fkey"
+            columns: ["sku_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -107,6 +249,111 @@ export type Database = {
           {
             foreignKeyName: "inventory_material_id_fkey"
             columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_work_transformations: {
+        Row: {
+          actual_output_weight_kg: number | null
+          actual_return_date: string | null
+          contractor_id: string
+          created_at: string
+          expected_output_weight_kg: number
+          expected_return_date: string | null
+          id: string
+          input_batch_id: string
+          input_sku_id: string
+          input_weight_kg: number
+          job_work_number: string
+          output_batch_id: string | null
+          output_sku_id: string
+          process_description: string | null
+          process_type: string
+          processing_cost_per_kg: number | null
+          sent_date: string
+          status: string
+          total_processing_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          actual_output_weight_kg?: number | null
+          actual_return_date?: string | null
+          contractor_id: string
+          created_at?: string
+          expected_output_weight_kg: number
+          expected_return_date?: string | null
+          id?: string
+          input_batch_id: string
+          input_sku_id: string
+          input_weight_kg: number
+          job_work_number: string
+          output_batch_id?: string | null
+          output_sku_id: string
+          process_description?: string | null
+          process_type: string
+          processing_cost_per_kg?: number | null
+          sent_date: string
+          status?: string
+          total_processing_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actual_output_weight_kg?: number | null
+          actual_return_date?: string | null
+          contractor_id?: string
+          created_at?: string
+          expected_output_weight_kg?: number
+          expected_return_date?: string | null
+          id?: string
+          input_batch_id?: string
+          input_sku_id?: string
+          input_weight_kg?: number
+          job_work_number?: string
+          output_batch_id?: string | null
+          output_sku_id?: string
+          process_description?: string | null
+          process_type?: string
+          processing_cost_per_kg?: number | null
+          sent_date?: string
+          status?: string
+          total_processing_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_work_transformations_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_work_transformations_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_work_transformations_input_sku_id_fkey"
+            columns: ["input_sku_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_work_transformations_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_work_transformations_output_sku_id_fkey"
+            columns: ["output_sku_id"]
             isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
@@ -622,6 +869,7 @@ export type Database = {
       }
       transactions: {
         Row: {
+          batch_id: string | null
           created_at: string
           id: string
           location_id: string
@@ -632,9 +880,12 @@ export type Database = {
           reference_id: string | null
           reference_type: string | null
           transaction_type: string
+          transformation_id: string | null
           unit_cost: number | null
+          weight_kg: number | null
         }
         Insert: {
+          batch_id?: string | null
           created_at?: string
           id?: string
           location_id: string
@@ -645,9 +896,12 @@ export type Database = {
           reference_id?: string | null
           reference_type?: string | null
           transaction_type: string
+          transformation_id?: string | null
           unit_cost?: number | null
+          weight_kg?: number | null
         }
         Update: {
+          batch_id?: string | null
           created_at?: string
           id?: string
           location_id?: string
@@ -658,9 +912,18 @@ export type Database = {
           reference_id?: string | null
           reference_type?: string | null
           transaction_type?: string
+          transformation_id?: string | null
           unit_cost?: number | null
+          weight_kg?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_location_id_fkey"
             columns: ["location_id"]
@@ -675,6 +938,13 @@ export type Database = {
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_transformation_id_fkey"
+            columns: ["transformation_id"]
+            isOneToOne: false
+            referencedRelation: "job_work_transformations"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -682,6 +952,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_batch_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_sku: {
         Args: {
           p_grade: string
