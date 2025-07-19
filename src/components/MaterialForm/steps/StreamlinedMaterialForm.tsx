@@ -10,7 +10,7 @@ import { Plus, X, AlertTriangle, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecentBatchCodes } from "@/hooks/useBatchCodeValidation";
-import { UnifiedBatchForm } from "../BatchForm/UnifiedBatchForm";
+import { UnifiedBatchForm } from "@/components/BatchForm/UnifiedBatchForm";
 
 interface Batch {
   id?: string;

@@ -13,6 +13,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { UnifiedBatchForm } from "@/components/BatchForm/UnifiedBatchForm";
 
+// Simple batch interface for the form
+interface SimpleBatch {
+  id?: string;
+  batch_code: string;
+  total_weight_kg: number;
+  heat_number?: string;
+  make?: string;
+  notes?: string;
+}
+
 interface BatchManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,7 +37,7 @@ interface BatchManagementModalProps {
 
 export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagementModalProps) => {
   const [activeTab, setActiveTab] = useState("view");
-  const [newBatches, setNewBatches] = useState([{
+  const [newBatches, setNewBatches] = useState<SimpleBatch[]>([{
     batch_code: "",
     total_weight_kg: 0,
     heat_number: "",
@@ -218,7 +228,7 @@ export const BatchManagementModal = ({ isOpen, onClose, material }: BatchManagem
           <TabsContent value="create" className="space-y-4">
             <UnifiedBatchForm
               batches={newBatches}
-              onBatchesChange={setNewBatches}
+              onBatchesChange={(updatedBatches) => setNewBatches(updatedBatches)}
               canAddMultiple={true}
               showTitle={true}
             />
