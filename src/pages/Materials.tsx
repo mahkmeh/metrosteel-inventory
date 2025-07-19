@@ -13,8 +13,9 @@ import { useMaterialKpis } from "@/hooks/useMaterialKpis";
 import { MaterialFormSteps } from "@/components/MaterialForm/MaterialFormSteps";
 import { CategoryStep } from "@/components/MaterialForm/steps/CategoryStep";
 import { SubTypeStep } from "@/components/MaterialForm/steps/SubTypeStep";
-import { CombinedFormStep } from "@/components/MaterialForm/steps/CombinedFormStep";
+import { StreamlinedMaterialForm } from "@/components/MaterialForm/steps/StreamlinedMaterialForm";
 import { BatchManagementModal } from "@/components/BatchManagementModal";
+import { useCreateBatch } from "@/hooks/useBatches";
 
 const Materials = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,14 +50,11 @@ const Materials = () => {
     bar_shape: "",
     size_description: "",
     
-    // Batch info
-    batch_no: "",
-    heat_number: "",
-    no_of_sheets: "",
-    batch_weight: "",
-    
     // Finish
     finish: "",
+    
+    // Batches
+    batches: [] as any[],
   });
 
   const { toast } = useToast();
@@ -127,6 +125,7 @@ const Materials = () => {
   });
 
   const resetForm = () => {
+    setEditingMaterial(null);
     setFormData({
       name: "",
       category: "",
@@ -143,11 +142,8 @@ const Materials = () => {
       pipe_type: "",
       bar_shape: "",
       size_description: "",
-      batch_no: "",
-      heat_number: "",
-      no_of_sheets: "",
-      batch_weight: "",
       finish: "",
+      batches: [],
     });
     setCurrentStep(1);
   };
@@ -170,11 +166,8 @@ const Materials = () => {
       pipe_type: material.pipe_type || "",
       bar_shape: material.bar_shape || "",
       size_description: material.size_description || "",
-      batch_no: material.batch_no || "",
-      heat_number: material.heat_number || "",
-      no_of_sheets: material.no_of_sheets?.toString() || "",
-      batch_weight: material.batch_weight?.toString() || "",
       finish: material.finish || "",
+      batches: [],
     });
     setCurrentStep(1);
     setIsDialogOpen(true);
@@ -222,6 +215,14 @@ const Materials = () => {
     // Check required fields common to all categories
     if (!formData.grade || !formData.sku || !formData.make || !formData.name) return false;
     
+    // Check if at least one batch exists with required fields
+    if (!formData.batches || formData.batches.length === 0) return false;
+    
+    const hasValidBatch = formData.batches.some((batch: any) => 
+      batch.batch_code && batch.total_weight_kg > 0
+    );
+    if (!hasValidBatch) return false;
+    
     // Check category-specific dimension fields
     switch (formData.category) {
       case "Sheet":
@@ -255,7 +256,9 @@ const Materials = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const createBatch = useCreateBatch();
+
+  const handleSubmit = async () => {
     const materialData: any = {
       name: formData.name,
       category: formData.category,
@@ -269,10 +272,6 @@ const Materials = () => {
       length: formData.length ? parseFloat(formData.length) : null,
       diameter: formData.diameter ? parseFloat(formData.diameter) : null,
       base_price: formData.base_price ? parseFloat(formData.base_price) : null,
-      batch_no: formData.batch_no || null,
-      heat_number: formData.heat_number || null,
-      no_of_sheets: formData.no_of_sheets ? parseInt(formData.no_of_sheets) : null,
-      batch_weight: formData.batch_weight ? parseFloat(formData.batch_weight) : null,
       size_description: formData.size_description || null,
       finish: formData.finish || null,
     };
@@ -291,7 +290,33 @@ const Materials = () => {
       materialData.bar_shape = null;
     }
 
-    createMaterial.mutate(materialData);
+    // Create material first
+    try {
+      const materialResult = await createMaterial.mutateAsync(materialData);
+      
+      // Then create batches if not editing
+      if (!editingMaterial && formData.batches && formData.batches.length > 0) {
+        for (const batch of formData.batches) {
+          if (batch.batch_code && batch.total_weight_kg > 0) {
+            await createBatch.mutateAsync({
+              sku_id: materialResult.id,
+              batch_code: batch.batch_code,
+              total_weight_kg: batch.total_weight_kg,
+              available_weight_kg: batch.total_weight_kg,
+              heat_number: batch.heat_number,
+              make: batch.make || formData.make,
+              quality_grade: batch.quality_grade,
+              supplier_id: batch.supplier_id,
+              manufactured_date: batch.manufactured_date,
+              received_date: batch.received_date,
+              notes: batch.notes,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error creating material and batches:", error);
+    }
   };
 
   const handleManageBatches = (material: any) => {
@@ -332,9 +357,9 @@ const Materials = () => {
           />
         );
       }
-      // Otherwise, show CombinedFormStep
+      // Otherwise, show StreamlinedMaterialForm
       return (
-        <CombinedFormStep
+        <StreamlinedMaterialForm
           category={formData.category}
           subType=""
           formData={formData}
@@ -344,9 +369,9 @@ const Materials = () => {
     }
 
     if (currentStep === 3) {
-      // This is CombinedFormStep for categories with sub-type
+      // This is StreamlinedMaterialForm for categories with sub-type
       return (
-        <CombinedFormStep
+        <StreamlinedMaterialForm
           category={formData.category}
           subType={formData.pipe_type || formData.bar_shape || ""}
           formData={formData}
