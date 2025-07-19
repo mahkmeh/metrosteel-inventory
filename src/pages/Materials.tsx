@@ -344,10 +344,13 @@ const Materials = () => {
       // Then create batches if not editing
       if (!editingMaterial && formData.batches && formData.batches.length > 0) {
         console.log("Creating batches:", formData.batches);
+        const batchResults = [];
+        const batchErrors = [];
+        
         for (const batch of formData.batches) {
           if (batch.batch_code && batch.total_weight_kg > 0) {
             try {
-              await createBatch.mutateAsync({
+              const batchResult = await createBatch.mutateAsync({
                 sku_id: materialResult.id,
                 total_weight_kg: batch.total_weight_kg,
                 available_weight_kg: batch.total_weight_kg,
@@ -355,21 +358,44 @@ const Materials = () => {
                 make: batch.make || formData.make,
                 notes: batch.notes,
               });
+              batchResults.push(batchResult);
               console.log("Created batch:", batch.batch_code);
-            } catch (batchError) {
+            } catch (batchError: any) {
               console.error("Error creating batch:", batch.batch_code, batchError);
-              toast({
-                title: "Batch Creation Warning",
-                description: `Material created but failed to create batch ${batch.batch_code}`,
-                variant: "destructive",
-              });
+              
+              // Handle batch-specific errors
+              if (batchError.message?.includes("duplicate key value violates unique constraint")) {
+                if (batchError.message.includes("batch_code") || batchError.message.includes("batches_batch_code_key")) {
+                  batchErrors.push(`Batch code "${batch.batch_code}" already exists`);
+                } else {
+                  batchErrors.push(`Duplicate batch data for "${batch.batch_code}"`);
+                }
+              } else {
+                batchErrors.push(`Failed to create batch "${batch.batch_code}": ${batchError.message}`);
+              }
             }
           }
         }
-        toast({
-          title: "Success",
-          description: `Material created with ${formData.batches.length} batches`,
-        });
+        
+        // Show appropriate success/error messages
+        if (batchResults.length > 0 && batchErrors.length === 0) {
+          toast({
+            title: "Success",
+            description: `Material created with ${batchResults.length} batches successfully`,
+          });
+        } else if (batchResults.length > 0 && batchErrors.length > 0) {
+          toast({
+            title: "Partial Success",
+            description: `Material created with ${batchResults.length} batches. ${batchErrors.length} batches failed: ${batchErrors.join(", ")}`,
+            variant: "destructive",
+          });
+        } else if (batchErrors.length > 0) {
+          toast({
+            title: "Batch Creation Failed",
+            description: `Material created but all batches failed: ${batchErrors.join(", ")}`,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Error creating material and batches:", error);

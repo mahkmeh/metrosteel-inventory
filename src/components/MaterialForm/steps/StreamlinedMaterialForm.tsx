@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Paperclip, Link, Plus, Trash2, X, AlertTriangle, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useBatchCodeValidation, useRecentBatchCodes } from "@/hooks/useBatchCodeValidation";
 
 interface Batch {
   id?: string;
@@ -45,8 +46,12 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
   
   const [showDescription, setShowDescription] = useState(false);
   const [showBatchNotes, setShowBatchNotes] = useState<{[key: number]: boolean}>({});
+  const [batchCodeValidationStates, setBatchCodeValidationStates] = useState<{[key: number]: { batchCode: string, isValidating: boolean }}>({});
 
-  // Fetch recent batch numbers for reference
+  // Get recent batch codes for reference
+  const { data: recentBatchCodes = [] } = useRecentBatchCodes(5);
+
+  // Fetch recent batch numbers for reference (keep existing functionality)
   const { data: recentBatches = [] } = useQuery({
     queryKey: ["recent-batches", formData.sku],
     queryFn: async () => {
@@ -110,6 +115,18 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
         }
       });
       setShowBatchNotes(newShowBatchNotes);
+      
+      // Remove batch code validation state
+      const newValidationStates = { ...batchCodeValidationStates };
+      delete newValidationStates[index];
+      Object.keys(newValidationStates).forEach(key => {
+        const keyNum = parseInt(key);
+        if (keyNum > index) {
+          newValidationStates[keyNum - 1] = newValidationStates[keyNum];
+          delete newValidationStates[keyNum];
+        }
+      });
+      setBatchCodeValidationStates(newValidationStates);
     }
   };
 
@@ -119,6 +136,14 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
     );
     setBatches(updatedBatches);
     onFormDataChange({ ...formData, batches: updatedBatches });
+
+    // Update validation state for batch_code changes
+    if (field === 'batch_code') {
+      setBatchCodeValidationStates(prev => ({
+        ...prev,
+        [index]: { batchCode: value as string, isValidating: true }
+      }));
+    }
   };
 
   const toggleBatchNotes = (index: number) => {
@@ -129,6 +154,36 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
   };
 
   const isSKUDuplicate = formData.sku && !isEditing && existingSKUs.includes(formData.sku);
+
+  // Component for batch code validation
+  const BatchCodeValidation: React.FC<{ batchCode: string; index: number }> = ({ batchCode, index }) => {
+    const { data: validation, isLoading } = useBatchCodeValidation(batchCode);
+    
+    useEffect(() => {
+      setBatchCodeValidationStates(prev => ({
+        ...prev,
+        [index]: { batchCode, isValidating: isLoading }
+      }));
+    }, [batchCode, isLoading, index]);
+
+    if (!batchCode || batchCode.length < 2) return null;
+    
+    if (isLoading) {
+      return <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+      </div>;
+    }
+
+    return (
+      <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+        {validation?.exists ? (
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+        ) : (
+          <CheckCircle className="h-4 w-4 text-green-600" />
+        )}
+      </div>
+    );
+  };
 
   const renderDimensionFields = () => {
     switch (category) {
@@ -546,112 +601,131 @@ export const StreamlinedMaterialForm: React.FC<StreamlinedMaterialFormProps> = (
         </div>
 
         {/* Recent batch numbers reference */}
-        {recentBatches.length > 0 && (
+        {recentBatchCodes.length > 0 && (
           <div className="text-xs text-muted-foreground">
-            Recent: {recentBatches.map(b => b.batch_code).join(", ")}
+            <strong>Recent batch codes:</strong> {recentBatchCodes.join(", ")}
           </div>
         )}
 
-        {batches.map((batch, index) => (
-          <Card key={index}>
-            <CardContent className="pt-4">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="font-medium">Batch {index + 1}</h4>
-                {batches.length > 1 && (
-                  <Button
-                    onClick={() => removeBatch(index)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor={`batch_code_${index}`}>Batch Number *</Label>
-                  <Input
-                    id={`batch_code_${index}`}
-                    value={batch.batch_code}
-                    onChange={(e) => updateBatch(index, "batch_code", e.target.value)}
-                    placeholder="e.g., B2024001"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor={`weight_${index}`}>Weight (kg) *</Label>
-                  <Input
-                    id={`weight_${index}`}
-                    type="number"
-                    step="0.1"
-                    value={batch.total_weight_kg}
-                    onChange={(e) => updateBatch(index, "total_weight_kg", parseFloat(e.target.value) || 0)}
-                    placeholder="e.g., 500.5"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor={`heat_number_${index}`}>Heat Number</Label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id={`heat_number_${index}`}
-                      value={batch.heat_number || ""}
-                      onChange={(e) => updateBatch(index, "heat_number", e.target.value)}
-                      placeholder="e.g., HT240515"
-                      className="flex-1"
-                    />
-                    <Button type="button" variant="outline" size="sm" className="px-3">
-                      <Paperclip className="h-4 w-4" />
+        {batches.map((batch, index) => {
+          const batchCodeExists = batchCodeValidationStates[index]?.batchCode && batch.batch_code === batchCodeValidationStates[index]?.batchCode;
+          
+          return (
+            <Card key={index}>
+              <CardContent className="pt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-medium">Batch {index + 1}</h4>
+                  {batches.length > 1 && (
+                    <Button
+                      onClick={() => removeBatch(index)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                    <Button type="button" variant="outline" size="sm" className="px-3">
-                      <Link className="h-4 w-4" />
-                    </Button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor={`batch_code_${index}`}>Batch Number *</Label>
+                    <div className="relative">
+                      <Input
+                        id={`batch_code_${index}`}
+                        value={batch.batch_code}
+                        onChange={(e) => updateBatch(index, "batch_code", e.target.value)}
+                        placeholder="e.g., B2024001"
+                        className={
+                          batch.batch_code && batchCodeExists && 
+                          batchCodeValidationStates[index] && 
+                          !batchCodeValidationStates[index].isValidating
+                            ? "border-destructive" 
+                            : ""
+                        }
+                        required
+                      />
+                      <BatchCodeValidation batchCode={batch.batch_code} index={index} />
+                    </div>
+                    {batch.batch_code && batchCodeExists && 
+                     batchCodeValidationStates[index] && 
+                     !batchCodeValidationStates[index].isValidating && (
+                      <p className="text-xs text-destructive mt-1">This batch code already exists</p>
+                    )}
                   </div>
-                </div>
-              </div>
 
-              {/* Notes with plus button */}
-              <div className="mt-4">
-                {!showBatchNotes[index] ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleBatchNotes(index)}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Notes
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor={`notes_${index}`}>Notes</Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleBatchNotes(index)}
-                      >
-                        <X className="h-4 w-4" />
+                  <div>
+                    <Label htmlFor={`weight_${index}`}>Weight (kg) *</Label>
+                    <Input
+                      id={`weight_${index}`}
+                      type="number"
+                      step="0.1"
+                      value={batch.total_weight_kg}
+                      onChange={(e) => updateBatch(index, "total_weight_kg", parseFloat(e.target.value) || 0)}
+                      placeholder="e.g., 500.5"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor={`heat_number_${index}`}>Heat Number</Label>
+                    <div className="flex space-x-2">
+                      <Input
+                        id={`heat_number_${index}`}
+                        value={batch.heat_number || ""}
+                        onChange={(e) => updateBatch(index, "heat_number", e.target.value)}
+                        placeholder="e.g., HT240515"
+                        className="flex-1"
+                      />
+                      <Button type="button" variant="outline" size="sm" className="px-3">
+                        <Paperclip className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" className="px-3">
+                        <Link className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Textarea
-                      id={`notes_${index}`}
-                      value={batch.notes || ""}
-                      onChange={(e) => updateBatch(index, "notes", e.target.value)}
-                      placeholder="Additional notes for this batch..."
-                      className="min-h-[60px]"
-                    />
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                </div>
+
+                {/* Notes with plus button */}
+                <div className="mt-4">
+                  {!showBatchNotes[index] ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleBatchNotes(index)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Notes
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`notes_${index}`}>Notes</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleBatchNotes(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Textarea
+                        id={`notes_${index}`}
+                        value={batch.notes || ""}
+                        onChange={(e) => updateBatch(index, "notes", e.target.value)}
+                        placeholder="Additional notes for this batch..."
+                        className="min-h-[60px]"
+                      />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
