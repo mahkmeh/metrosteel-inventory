@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,14 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { CreditCard, Search, Eye, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
+import { PaymentRecordingModal } from "@/components/PaymentRecordingModal";
 
 const Payables = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const { data: payables = [], isLoading } = useQuery({
     queryKey: ["payables"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("payables")
         .select(`
           *,
@@ -72,7 +75,7 @@ const Payables = () => {
             <p className="text-sm text-muted-foreground">Total Outstanding</p>
             <p className="text-2xl font-bold">₹{totalOutstanding.toLocaleString()}</p>
           </div>
-          <Button>
+          <Button onClick={() => setShowPaymentModal(true)}>
             <DollarSign className="h-4 w-4 mr-2" />
             Record Payment
           </Button>
@@ -156,6 +159,11 @@ const Payables = () => {
           )}
         </CardContent>
       </Card>
+
+      <PaymentRecordingModal 
+        open={showPaymentModal} 
+        onOpenChange={setShowPaymentModal} 
+      />
     </div>
   );
 };

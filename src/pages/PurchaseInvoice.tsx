@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,14 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Plus, Search, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
+import { PurchaseInvoiceModal } from "@/components/PurchaseInvoiceModal";
 
 const PurchaseInvoice = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["purchase-invoices"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("purchase_invoices")
         .select(`
           *,
@@ -54,7 +57,7 @@ const PurchaseInvoice = () => {
           </h1>
           <p className="text-muted-foreground">Manage supplier invoices and payments</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowInvoiceModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Record Invoice
         </Button>
@@ -128,6 +131,11 @@ const PurchaseInvoice = () => {
           )}
         </CardContent>
       </Card>
+
+      <PurchaseInvoiceModal 
+        open={showInvoiceModal} 
+        onOpenChange={setShowInvoiceModal} 
+      />
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,14 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { RotateCcw, Plus, Search, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
+import { PurchaseReturnModal } from "@/components/PurchaseReturnModal";
 
 const PurchaseReturn = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showReturnModal, setShowReturnModal] = useState(false);
 
   const { data: returns = [], isLoading } = useQuery({
     queryKey: ["purchase-returns"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("purchase_returns")
         .select(`
           *,
@@ -62,7 +65,7 @@ const PurchaseReturn = () => {
           </h1>
           <p className="text-muted-foreground">Handle material returns to suppliers</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowReturnModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create Return
         </Button>
@@ -136,6 +139,11 @@ const PurchaseReturn = () => {
           )}
         </CardContent>
       </Card>
+
+      <PurchaseReturnModal 
+        open={showReturnModal} 
+        onOpenChange={setShowReturnModal} 
+      />
     </div>
   );
 };
