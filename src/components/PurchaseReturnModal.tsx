@@ -99,10 +99,17 @@ export const PurchaseReturnModal = ({ open, onOpenChange }: PurchaseReturnModalP
     mutationFn: async (values: ReturnFormValues) => {
       const { data, error } = await supabase
         .from("purchase_returns")
-        .insert([{
-          ...values,
+        .insert({
+          return_number: values.return_number,
+          supplier_id: values.supplier_id,
+          purchase_invoice_id: values.purchase_invoice_id,
+          purchase_order_id: values.purchase_order_id || "",
+          return_date: values.return_date,
+          total_return_amount: values.total_return_amount,
+          return_reason: values.return_reason,
+          notes: values.notes || null,
           status: "pending",
-        }])
+        })
         .select()
         .single();
 

@@ -116,7 +116,7 @@ export const PaymentRecordingModal = ({ open, onOpenChange }: PaymentRecordingMo
           transaction_type: "payment",
           reference_type: "payable",
           reference_id: values.payable_id,
-          material_id: selectedPayable.purchase_invoices?.id, // Use invoice ID as reference
+          material_id: selectedPayable.purchase_invoice_id, // Use purchase_invoice_id from payables table
           location_id: "00000000-0000-0000-0000-000000000000", // Default location for payments
           quantity: values.payment_amount,
           unit_cost: 1,

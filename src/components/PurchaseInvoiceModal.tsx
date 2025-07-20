@@ -100,11 +100,19 @@ export const PurchaseInvoiceModal = ({ open, onOpenChange }: PurchaseInvoiceModa
     mutationFn: async (values: InvoiceFormValues) => {
       const { data: invoice, error: invoiceError } = await supabase
         .from("purchase_invoices")
-        .insert([{
-          ...values,
+        .insert({
+          invoice_number: values.invoice_number,
+          supplier_id: values.supplier_id,
+          purchase_order_id: values.purchase_order_id || "",
+          invoice_date: values.invoice_date,
+          due_date: values.due_date || null,
+          subtotal_amount: values.subtotal_amount,
+          tax_amount: values.tax_amount,
+          total_amount: values.total_amount,
+          notes: values.notes || null,
           status: "received",
           received_date: values.invoice_date,
-        }])
+        })
         .select()
         .single();
 
@@ -220,7 +228,7 @@ export const PurchaseInvoiceModal = ({ open, onOpenChange }: PurchaseInvoiceModa
               name="purchase_order_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Purchase Order (Optional)</FormLabel>
+                  <FormLabel>Purchase Order</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
