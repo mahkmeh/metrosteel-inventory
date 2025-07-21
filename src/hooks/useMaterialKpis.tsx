@@ -8,16 +8,19 @@ export const useMaterialKpis = () => {
       const today = new Date();
       const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      const [materialsRes, inventoryRes] = await Promise.all([
+      const [materialsRes, inventoryRes, valuationSummaryRes] = await Promise.all([
         supabase.from("materials").select("*").eq("is_active", true),
-        supabase.from("inventory").select("*, materials!inner(name, base_price)")
+        supabase.from("inventory_valuation").select("*"),
+        supabase.from("inventory_valuation_summary").select("*").single()
       ]);
 
       if (materialsRes.error) throw materialsRes.error;
       if (inventoryRes.error) throw inventoryRes.error;
+      if (valuationSummaryRes.error) throw valuationSummaryRes.error;
 
       const materials = materialsRes.data || [];
       const inventory = inventoryRes.data || [];
+      const valuationSummary = valuationSummaryRes.data;
 
       // 1. Reorder Now - Count below minimum (using 10 as minimum threshold)
       const reorderNow = inventory.filter(item => 
@@ -30,8 +33,8 @@ export const useMaterialKpis = () => {
       );
       const excessStockValue = excessStock.reduce((sum, item) => {
         const excess = (item.quantity || 0) - 1000;
-        const price = item.materials?.base_price || 0;
-        return sum + (excess * price);
+        const avgCost = item.weighted_avg_cost || 0;
+        return sum + (excess * avgCost);
       }, 0);
 
       // 3. Price Updates Required - Count with old prices (simulated as materials updated >30 days ago)
@@ -50,7 +53,10 @@ export const useMaterialKpis = () => {
           value: excessStockValue
         },
         priceUpdatesRequired: priceUpdatesRequired.length,
-        qualityHold
+        qualityHold,
+        totalInventoryValue: valuationSummary?.total_inventory_value || 0,
+        totalMaterials: valuationSummary?.total_materials || 0,
+        overallAvgCost: valuationSummary?.overall_avg_cost || 0
       };
     },
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes

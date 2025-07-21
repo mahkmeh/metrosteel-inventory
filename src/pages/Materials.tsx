@@ -474,7 +474,16 @@ const Materials = () => {
   return (
     <div className="px-4 sm:px-0">
       {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <KpiCard
+          title="Total Inventory Value"
+          value={`₹${(kpiData?.totalInventoryValue || 0).toLocaleString('en-IN')}`}
+          subtitle={`${kpiData?.totalMaterials || 0} materials`}
+          status="info"
+          icon={DollarSign}
+          actionLabel="View Report"
+          onAction={() => toast({ title: "Inventory Report", description: "Opening inventory valuation report" })}
+        />
         <KpiCard
           title="Reorder Now"
           value={kpiData?.reorderNow || 0}
@@ -498,7 +507,7 @@ const Materials = () => {
           value={kpiData?.priceUpdatesRequired || 0}
           subtitle="with old prices"
           status="info"
-          icon={DollarSign}
+          icon={Truck}
           actionLabel="Update Pricing"
           onAction={() => toast({ title: "Update Pricing", description: "Opening price update workflow" })}
         />
@@ -702,7 +711,27 @@ const Materials = () => {
                     className="h-auto p-0 font-semibold text-left justify-start"
                     onClick={() => handleSort("base_price")}
                   >
-                    Price
+                    Base Price
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    className="h-auto p-0 font-semibold text-left justify-start"
+                    onClick={() => handleSort("weightedAvgCost")}
+                  >
+                    Avg Cost (WAC)
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    className="h-auto p-0 font-semibold text-left justify-start"
+                    onClick={() => handleSort("totalInventoryValue")}
+                  >
+                    Inventory Value
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
@@ -712,7 +741,7 @@ const Materials = () => {
             <TableBody>
               {materials?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                     No materials found. Create your first material to get started.
                   </TableCell>
                 </TableRow>
@@ -779,6 +808,24 @@ const Materials = () => {
                     </TableCell>
                     <TableCell>
                       {material.base_price ? `₹${material.base_price}/${material.unit}` : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {material.weightedAvgCost > 0 ? `₹${material.weightedAvgCost.toFixed(2)}` : "—"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">per {material.unit}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-primary">
+                          ₹{(material.totalInventoryValue || 0).toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {material.totalQuantity || 0} {material.unit} total
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">

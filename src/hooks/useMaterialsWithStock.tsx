@@ -13,6 +13,8 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
           inventory!inner (
             quantity,
             available_quantity,
+            unit_cost,
+            total_value,
             location_id,
             locations (
               name
@@ -50,6 +52,17 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
           return total + (inv.available_quantity || 0);
         }, 0) || 0;
 
+        // Calculate total inventory value and weighted average cost
+        const totalInventoryValue = material.inventory?.reduce((total: number, inv: any) => {
+          return total + (inv.total_value || 0);
+        }, 0) || 0;
+
+        const totalQuantity = material.inventory?.reduce((total: number, inv: any) => {
+          return total + (inv.quantity || 0);
+        }, 0) || 0;
+
+        const weightedAvgCost = totalQuantity > 0 ? totalInventoryValue / totalQuantity : 0;
+
         // Calculate ordered quantity from pending POs
         const orderedQty = pendingOrders
           ?.filter(order => order.material_id === material.id)
@@ -77,6 +90,9 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
           totalExpected,
           stockStatus,
           statusColor,
+          totalInventoryValue,
+          weightedAvgCost,
+          totalQuantity,
           // Keep inventory details for drill-down
           inventoryDetails: material.inventory
         };

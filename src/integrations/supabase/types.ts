@@ -144,6 +144,13 @@ export type Database = {
             foreignKeyName: "batches_sku_id_fkey"
             columns: ["sku_id"]
             isOneToOne: false
+            referencedRelation: "material_valuation_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "batches_sku_id_fkey"
+            columns: ["sku_id"]
+            isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
@@ -212,6 +219,7 @@ export type Database = {
           quality_grade: string
           quantity: number
           reserved_quantity: number
+          total_value: number | null
           unit_cost: number | null
         }
         Insert: {
@@ -224,6 +232,7 @@ export type Database = {
           quality_grade?: string
           quantity?: number
           reserved_quantity?: number
+          total_value?: number | null
           unit_cost?: number | null
         }
         Update: {
@@ -236,6 +245,7 @@ export type Database = {
           quality_grade?: string
           quantity?: number
           reserved_quantity?: number
+          total_value?: number | null
           unit_cost?: number | null
         }
         Relationships: [
@@ -245,6 +255,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "locations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_valuation_summary"
+            referencedColumns: ["material_id"]
           },
           {
             foreignKeyName: "inventory_material_id_fkey"
@@ -341,6 +358,13 @@ export type Database = {
             foreignKeyName: "job_work_transformations_input_sku_id_fkey"
             columns: ["input_sku_id"]
             isOneToOne: false
+            referencedRelation: "material_valuation_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "job_work_transformations_input_sku_id_fkey"
+            columns: ["input_sku_id"]
+            isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
@@ -350,6 +374,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "batches"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_work_transformations_output_sku_id_fkey"
+            columns: ["output_sku_id"]
+            isOneToOne: false
+            referencedRelation: "material_valuation_summary"
+            referencedColumns: ["material_id"]
           },
           {
             foreignKeyName: "job_work_transformations_output_sku_id_fkey"
@@ -740,6 +771,13 @@ export type Database = {
             foreignKeyName: "fk_purchase_return_items_material"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_valuation_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "fk_purchase_return_items_material"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
@@ -857,6 +895,13 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "quotation_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_valuation_summary"
+            referencedColumns: ["material_id"]
+          },
           {
             foreignKeyName: "quotation_items_material_id_fkey"
             columns: ["material_id"]
@@ -1203,6 +1248,13 @@ export type Database = {
             foreignKeyName: "transactions_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_valuation_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "transactions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
@@ -1217,7 +1269,71 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      inventory_valuation: {
+        Row: {
+          available_quantity: number | null
+          calculated_avg_cost: number | null
+          category: string | null
+          grade: string | null
+          id: string | null
+          last_updated: string | null
+          location_id: string | null
+          location_name: string | null
+          material_id: string | null
+          material_name: string | null
+          quality_grade: string | null
+          quantity: number | null
+          reserved_quantity: number | null
+          sku: string | null
+          total_value: number | null
+          weighted_avg_cost: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_valuation_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "inventory_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_valuation_summary: {
+        Row: {
+          overall_avg_cost: number | null
+          total_inventory_value: number | null
+          total_materials: number | null
+          total_quantity: number | null
+        }
+        Relationships: []
+      }
+      material_valuation_summary: {
+        Row: {
+          category: string | null
+          grade: string | null
+          material_id: string | null
+          material_name: string | null
+          sku: string | null
+          total_quantity: number | null
+          total_value: number | null
+          weighted_avg_cost: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       generate_batch_code: {
