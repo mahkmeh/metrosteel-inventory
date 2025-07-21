@@ -1,3 +1,4 @@
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -70,20 +71,29 @@ export const usePurchaseOrderBatches = () => {
       purchaseOrderId: string; 
       supplierId: string; 
     }) => {
-      const updates = batchSelections.map(selection => ({
-        id: selection.batch.id,
-        purchase_order_id: purchaseOrderId,
-        supplier_id: supplierId,
-        reserved_weight_kg: selection.quantity
-      }));
+      // Update batches one by one to avoid upsert issues
+      const updatePromises = batchSelections.map(selection => 
+        supabase
+          .from("batches")
+          .update({
+            purchase_order_id: purchaseOrderId,
+            supplier_id: supplierId,
+            reserved_weight_kg: selection.quantity
+          })
+          .eq("id", selection.batch.id)
+          .select()
+          .single()
+      );
 
-      const { data, error } = await supabase
-        .from("batches")
-        .upsert(updates, { onConflict: "id" })
-        .select();
-
-      if (error) throw error;
-      return data;
+      const results = await Promise.all(updatePromises);
+      
+      // Check for any errors
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw errors[0].error;
+      }
+      
+      return results.map(result => result.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["batches"] });
