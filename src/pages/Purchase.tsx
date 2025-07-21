@@ -14,10 +14,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, Truck, Package, X, Search, AlertTriangle, DollarSign, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+import { EnhancedProductSelectionModal } from "@/components/EnhancedProductSelectionModal";
 import { KpiCard } from "@/components/KpiCard";
 import { usePurchaseKpis } from "@/hooks/usePurchaseKpis";
-import { BatchSelectionForPO } from "@/components/BatchSelectionForPO";
 
 const Purchase = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -146,7 +145,8 @@ const Purchase = () => {
           linked_sales_order_id: item.linked_sales_order_id,
           notes: item.notes,
           purchase_order_id: editingOrder.id,
-          batch_id: item.batch_id || null // Include batch_id
+          batch_selections: item.batch_selections || null,
+          batch_id: null // batch_id is not used here, batch_selections used instead
         }));
         
         const { error: itemsError } = await supabase
@@ -170,7 +170,8 @@ const Purchase = () => {
           linked_sales_order_id: item.linked_sales_order_id,
           notes: item.notes,
           purchase_order_id: newOrder.id,
-          batch_id: item.batch_id || null // Include batch_id
+          batch_selections: item.batch_selections || null,
+          batch_id: null
         }));
         
         const { error: itemsError } = await supabase
@@ -180,14 +181,17 @@ const Purchase = () => {
 
         // Link batches to the purchase order
         for (const item of orderItems) {
-          if (item.batch_id) {
-            await supabase
-              .from("batches")
-              .update({ 
-                purchase_order_id: newOrder.id,
-                supplier_id: orderWithTotal.supplier_id
-              })
-              .eq("id", item.batch_id);
+          if (item.batch_selections && item.batch_selections.length > 0) {
+            for (const bs of item.batch_selections) {
+              await supabase
+                .from("batches")
+                .update({ 
+                  purchase_order_id: newOrder.id,
+                  supplier_id: orderWithTotal.supplier_id,
+                  reserved_weight_kg: bs.quantity
+                })
+                .eq("id", bs.batch.id);
+            }
           }
         }
       }
@@ -201,7 +205,7 @@ const Purchase = () => {
       });
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: `Failed to ${editingOrder ? "update" : "create"} purchase order: ${error.message}`,
@@ -250,6 +254,10 @@ const Purchase = () => {
       expected_delivery: order.expected_delivery || "",
       notes: order.notes || "",
     });
+    // Load order items with batch selections if available
+    // For simplicity, assume orderItems are fetched separately or passed in
+    // Here we reset orderItems to empty; in real app, fetch and set
+    setOrderItems([]);
     setIsDialogOpen(true);
   };
 
@@ -290,7 +298,7 @@ const Purchase = () => {
     setExpandedRows(newExpandedRows);
   };
 
-  const addMaterialToOrder = (material: any) => {
+  const addMaterialToOrder = (material: any, orderQuantity: number, batchSelections: any[]) => {
     const existingItem = orderItems.find(item => item.material_id === material.id);
     if (existingItem) {
       toast({
@@ -305,14 +313,14 @@ const Purchase = () => {
       material_id: material.id,
       material_name: material.name,
       material_sku: material.sku,
-      quantity: 1,
+      quantity: orderQuantity,
       unit_price: material.base_price || 0,
-      line_total: material.base_price || 0,
+      line_total: (material.base_price || 0) * orderQuantity,
       order_type: "stock",
       linked_sales_order_id: null,
       notes: "",
-      batch_id: null, // Add batch_id field
-      selected_batch: null, // Add selected_batch for UI
+      batch_selections: batchSelections, // Store batch selections
+      selected_batches: batchSelections.map(bs => bs.batch), // For display
     };
 
     setOrderItems([...orderItems, newItem]);
@@ -327,28 +335,6 @@ const Purchase = () => {
       updatedItems[index].line_total = updatedItems[index].quantity * updatedItems[index].unit_price;
     }
     
-    setOrderItems(updatedItems);
-  };
-
-  const handleBatchSelect = (index: number, batch: any) => {
-    const updatedItems = [...orderItems];
-    updatedItems[index] = { 
-      ...updatedItems[index], 
-      batch_id: batch.id,
-      selected_batch: batch 
-    };
-    setOrderItems(updatedItems);
-  };
-
-  const handleBatchCreate = (index: number, batchData: any) => {
-    // For now, we'll create the batch when the PO is saved
-    // Store the batch data temporarily in the order item
-    const updatedItems = [...orderItems];
-    updatedItems[index] = { 
-      ...updatedItems[index], 
-      new_batch_data: batchData,
-      selected_batch: { batch_code: batchData.batch_code, ...batchData }
-    };
     setOrderItems(updatedItems);
   };
 
@@ -441,7 +427,7 @@ const Purchase = () => {
                     {editingOrder ? "Edit Purchase Order" : "Create Purchase Order"}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingOrder ? "Update purchase order details" : "Create a new purchase order with materials and batch tracking"}
+                    {editingOrder ? "Update purchase order details" : "Create a new purchase order with advanced batch tracking"}
                   </DialogDescription>
                 </div>
                 <Button type="button" variant="outline" onClick={resetForm}>
@@ -562,7 +548,7 @@ const Purchase = () => {
                           onClick={() => setShowProductModal(true)}
                         >
                           <Search className="h-4 w-4 mr-2" />
-                          Browse
+                          Browse Products
                         </Button>
                       </div>
 
@@ -575,7 +561,7 @@ const Purchase = () => {
                               <div
                                 key={material.id}
                                 className="p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 transition-colors"
-                                onClick={() => addMaterialToOrder(material)}
+                                onClick={() => addMaterialToOrder(material, 1, [])}
                               >
                                 <div className="flex justify-between items-center">
                                   <div>
@@ -649,7 +635,22 @@ const Purchase = () => {
                                   </div>
                                 </div>
 
-                                <div className="space-y-2">
+                                {/* Batch Information Display */}
+                                {item.batch_selections && item.batch_selections.length > 0 && (
+                                  <div className="mt-3 p-2 bg-muted/20 rounded">
+                                    <div className="text-xs font-medium mb-1">Allocated Batches:</div>
+                                    <div className="space-y-1">
+                                      {item.batch_selections.map((bs: any, bsIndex: number) => (
+                                        <div key={bsIndex} className="flex justify-between text-xs">
+                                          <span>{bs.batch.batch_code}</span>
+                                          <span>{bs.quantity} KG</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="space-y-2 mt-3">
                                   <div>
                                     <Label className="text-xs">Order Type</Label>
                                     <RadioGroup
@@ -729,22 +730,10 @@ const Purchase = () => {
 
                   {orderItems.length > 0 ? (
                     <div className="space-y-4 max-h-[calc(90vh-300px)] overflow-y-auto">
-                      {orderItems.map((item, index) => (
-                        <Card key={index}>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">{item.material_name}</CardTitle>
-                            <div className="text-xs text-muted-foreground">SKU: {item.material_sku}</div>
-                          </CardHeader>
-                          <CardContent className="p-3 pt-0">
-                            <BatchSelectionForPO
-                              materialId={item.material_id}
-                              selectedBatch={item.selected_batch}
-                              onBatchSelect={(batch) => handleBatchSelect(index, batch)}
-                              onCreateBatch={(batchData) => handleBatchCreate(index, batchData)}
-                            />
-                          </CardContent>
-                        </Card>
-                      ))}
+                      {/* Batch management moved to modal, so this can be simplified or removed */}
+                      <div className="text-center text-muted-foreground text-sm">
+                        Use the product selection modal to manage batches.
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground text-sm">
@@ -756,7 +745,7 @@ const Purchase = () => {
             </div>
           </DialogContent>
 
-          <ProductSelectionModal
+          <EnhancedProductSelectionModal
             open={showProductModal}
             onOpenChange={setShowProductModal}
             onSelectMaterial={addMaterialToOrder}

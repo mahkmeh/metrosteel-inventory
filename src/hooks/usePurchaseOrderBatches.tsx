@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +35,7 @@ export const usePurchaseOrderBatches = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["batches"] });
       queryClient.invalidateQueries({ queryKey: ["material-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["enhanced-batches"] });
       toast({
         title: "Success",
         description: "Batch created successfully for purchase order",
@@ -55,6 +55,50 @@ export const usePurchaseOrderBatches = () => {
       toast({
         title: "Error",
         description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const linkBatchesToPO = useMutation({
+    mutationFn: async ({ 
+      batchSelections, 
+      purchaseOrderId, 
+      supplierId 
+    }: { 
+      batchSelections: { batch: any; quantity: number }[]; 
+      purchaseOrderId: string; 
+      supplierId: string; 
+    }) => {
+      const updates = batchSelections.map(selection => ({
+        id: selection.batch.id,
+        purchase_order_id: purchaseOrderId,
+        supplier_id: supplierId,
+        reserved_weight_kg: selection.quantity
+      }));
+
+      const { data, error } = await supabase
+        .from("batches")
+        .upsert(updates, { onConflict: "id" })
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["batches"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["enhanced-batches"] });
+      toast({
+        title: "Success",
+        description: "Batches linked to purchase order successfully",
+      });
+    },
+    onError: (error) => {
+      console.error("Error linking batches to PO:", error);
+      toast({
+        title: "Error",
+        description: "Failed to link batches to purchase order",
         variant: "destructive",
       });
     },
@@ -139,6 +183,7 @@ export const usePurchaseOrderBatches = () => {
 
   return {
     createBatchForPO,
+    linkBatchesToPO,
     linkBatchToPO,
     updateBatchFromPO,
   };
