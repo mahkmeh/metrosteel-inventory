@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Edit, Users, Star, TrendingUp } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface ContractorsTabProps {
   onAddContractor: () => void;
@@ -19,79 +21,35 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name");
 
-  // Mock data for contractors
-  const mockContractorsData = [
-    {
-      id: "C001",
-      vendorName: "Steel Fab Works",
-      concernedPerson: "Rajesh Kumar",
-      phone: "+91-9876543210",
-      specialization: "Cutting, Welding",
-      activeJobwork: ["Cutting MS Sheets", "Welding SS Pipes"],
-      status: "active",
-      rating: 4.5,
-      completedJobs: 25,
-      pendingPayment: 45000
-    },
-    {
-      id: "C002",
-      vendorName: "Precision Tools Ltd", 
-      concernedPerson: "Suresh Patel",
-      phone: "+91-9876543211",
-      specialization: "Threading, Machining",
-      activeJobwork: ["Threading SS Rods"],
-      status: "active",
-      rating: 4.8,
-      completedJobs: 18,
-      pendingPayment: 0
-    },
-    {
-      id: "C003",
-      vendorName: "Welding Solutions",
-      concernedPerson: "Amit Singh", 
-      phone: "+91-9876543212",
-      specialization: "Welding, Fabrication",
-      activeJobwork: ["Welding MS Plates", "Aluminum Bending", "CI Machining"],
-      status: "quality_issues",
-      rating: 3.2,
-      completedJobs: 12,
-      pendingPayment: 25000
-    },
-    {
-      id: "C004",
-      vendorName: "Heavy Industries",
-      concernedPerson: "Vikram Sharma",
-      phone: "+91-9876543213", 
-      specialization: "Heavy Machining",
-      activeJobwork: ["CI Block Machining"],
-      status: "machine_repair",
-      rating: 4.2,
-      completedJobs: 8,
-      pendingPayment: 15000
-    },
-    {
-      id: "C005",
-      vendorName: "Quick Process",
-      concernedPerson: "Pradeep Gupta",
-      phone: "+91-9876543214",
-      specialization: "Quick Processing",
-      activeJobwork: ["AL Sheet Bending", "MS Sheet Cutting"],
-      status: "active",
-      rating: 4.0,
-      completedJobs: 32,
-      pendingPayment: 8000
-    }
-  ];
-
-  // Filter and search logic
-  const filteredData = useMemo(() => {
-    let filtered = mockContractorsData.filter(contractor => {
-      const matchesSearch = searchTerm === "" || 
-        contractor.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contractor.concernedPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contractor.specialization.toLowerCase().includes(searchTerm.toLowerCase());
+  // Fetch suppliers (contractors) from database
+  const { data: contractors = [], isLoading } = useQuery({
+    queryKey: ['contractors'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
       
-      const matchesStatus = statusFilter === "all" || contractor.status === statusFilter;
+      if (error) {
+        console.error('Error fetching contractors:', error);
+        return [];
+      }
+      
+      return data || [];
+    }
+  });
+
+  // Filter and search logic using real data
+  const filteredData = useMemo(() => {
+    let filtered = contractors.filter(contractor => {
+      const matchesSearch = searchTerm === "" || 
+        contractor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (contractor.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (contractor.address?.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      // Since suppliers table doesn't have status field, we treat all as active
+      const matchesStatus = statusFilter === "all" || statusFilter === "active";
       
       return matchesSearch && matchesStatus;
     });
@@ -100,50 +58,38 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "name":
-          return a.vendorName.localeCompare(b.vendorName);
-        case "rating":
-          return b.rating - a.rating;
-        case "completedJobs":
-          return b.completedJobs - a.completedJobs;
+          return a.name.localeCompare(b.name);
+        case "contact":
+          return (a.contact_person || '').localeCompare(b.contact_person || '');
         default:
           return 0;
       }
     });
 
     return filtered;
-  }, [mockContractorsData, searchTerm, statusFilter, sortBy]);
+  }, [contractors, searchTerm, statusFilter, sortBy]);
 
-  // KPI calculations
+  // KPI calculations using real data
   const kpiData = useMemo(() => {
-    const activeContractors = mockContractorsData.filter(c => c.status === "active").length;
-    const pendingPayments = mockContractorsData.filter(c => c.pendingPayment > 0).length;
-    const avgRating = mockContractorsData.reduce((sum, c) => sum + c.rating, 0) / mockContractorsData.length;
+    const activeContractors = contractors.length;
+    const withContact = contractors.filter(c => c.contact_person).length;
+    const withPaymentTerms = contractors.filter(c => c.payment_terms).length;
     
-    return { activeContractors, pendingPayments, avgRating };
-  }, [mockContractorsData]);
+    return { 
+      activeContractors, 
+      withContact, 
+      withPaymentTerms
+    };
+  }, [contractors]);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string = "active") => {
     const statusConfig = {
       active: { variant: "success" as const, label: "Active" },
-      inactive: { variant: "secondary" as const, label: "Inactive" },
-      quality_issues: { variant: "destructive" as const, label: "Quality Issues" },
-      machine_repair: { variant: "warning" as const, label: "Machine Repair" }
+      inactive: { variant: "secondary" as const, label: "Inactive" }
     };
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
     return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getRatingStars = (rating: number) => {
-    return "★".repeat(Math.floor(rating)) + (rating % 1 >= 0.5 ? "☆" : "") + "☆".repeat(5 - Math.ceil(rating));
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
   };
 
   const clearFilters = () => {
@@ -167,24 +113,24 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
           details={`${kpiData.activeContractors} contractors actively working`}
         />
         <KpiCard
-          title="Pending Payments"
-          value={kpiData.pendingPayments}
-          subtitle="Outstanding contractors"
-          status="warning"
+          title="Contact Information"
+          value={kpiData.withContact}
+          subtitle="Contractors with contact person"
+          status="info"
           icon={TrendingUp}
-          actionLabel="View Pending"
+          actionLabel="View Details"
           onAction={() => {}}
-          details={`${kpiData.pendingPayments} contractors with pending payments`}
+          details={`${kpiData.withContact} contractors have contact person info`}
         />
         <KpiCard
-          title="Performance Rating"
-          value={kpiData.avgRating.toFixed(1)}
-          subtitle="Average contractor rating"
+          title="Payment Terms"
+          value={kpiData.withPaymentTerms}
+          subtitle="Contractors with payment terms"
           status="good"
           icon={Star}
-          actionLabel="View Ratings"
-          onAction={() => setSortBy("rating")}
-          details="Average quality and delivery performance"
+          actionLabel="View Terms"
+          onAction={() => {}}
+          details="Contractors with defined payment terms"
         />
       </div>
 
@@ -213,11 +159,8 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">All Contractors</SelectItem>
             <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="quality_issues">Quality Issues</SelectItem>
-            <SelectItem value="machine_repair">Machine Repair</SelectItem>
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={setSortBy}>
@@ -226,8 +169,7 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="rating">Rating</SelectItem>
-            <SelectItem value="completedJobs">Completed Jobs</SelectItem>
+            <SelectItem value="contact">Contact Person</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" onClick={clearFilters}>
@@ -251,10 +193,10 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
               <TableHeader>
                 <TableRow className="border-b">
                   <TableHead className="text-xs font-medium px-2 sm:px-4">Vendor Name</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4">Concerned Person</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[200px]">List of Jobwork</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Contact Person</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[200px]">Contact Details</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Payment Terms</TableHead>
                   <TableHead className="text-xs font-medium px-2 sm:px-4">Status</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4">Rating</TableHead>
                   <TableHead className="text-xs font-medium px-2 sm:px-4 w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -263,46 +205,35 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
                   <TableRow key={contractor.id} className="hover:bg-muted/50">
                     <TableCell className="px-2 sm:px-4 py-2">
                       <div>
-                        <div className="font-medium text-sm">{contractor.vendorName}</div>
-                        <div className="text-xs text-muted-foreground">{contractor.specialization}</div>
-                        <div className="text-xs text-muted-foreground">{contractor.phone}</div>
+                        <div className="font-medium text-sm">{contractor.name}</div>
+                        <div className="text-xs text-muted-foreground">{contractor.gst_number || 'No GST'}</div>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm px-2 sm:px-4 py-2">
-                      <div className="font-medium">{contractor.concernedPerson}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {contractor.completedJobs} completed jobs
-                      </div>
+                      <div className="font-medium">{contractor.contact_person || 'Not specified'}</div>
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
                       <div className="text-sm">
-                        {contractor.activeJobwork.slice(0, 2).map((job, index) => (
-                          <div key={index} className="text-xs py-1">
-                            • {job}
-                          </div>
-                        ))}
-                        {contractor.activeJobwork.length > 2 && (
-                          <div className="text-xs text-muted-foreground">
-                            +{contractor.activeJobwork.length - 2} more
-                          </div>
+                        {contractor.phone && (
+                          <div className="text-xs py-1">📞 {contractor.phone}</div>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-2 sm:px-4 py-2">
-                      <div className="space-y-1">
-                        {getStatusBadge(contractor.status)}
-                        {contractor.pendingPayment > 0 && (
-                          <div className="text-xs text-orange-600">
-                            Pending: {formatCurrency(contractor.pendingPayment)}
+                        {contractor.email && (
+                          <div className="text-xs py-1">✉️ {contractor.email}</div>
+                        )}
+                        {contractor.address && (
+                          <div className="text-xs py-1 text-muted-foreground">
+                            📍 {contractor.address.substring(0, 50)}...
                           </div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
                       <div className="text-sm">
-                        <div className="text-yellow-500">{getRatingStars(contractor.rating)}</div>
-                        <div className="text-xs text-muted-foreground">{contractor.rating}/5.0</div>
+                        {contractor.payment_terms || 'Not specified'}
                       </div>
+                    </TableCell>
+                    <TableCell className="px-2 sm:px-4 py-2">
+                      {getStatusBadge("active")}
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
                       <Button
@@ -316,10 +247,17 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredData.length === 0 && (
+                {filteredData.length === 0 && !isLoading && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       No contractors found matching your criteria
+                    </TableCell>
+                  </TableRow>
+                )}
+                {isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Loading contractors...
                     </TableCell>
                   </TableRow>
                 )}

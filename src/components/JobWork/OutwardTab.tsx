@@ -24,54 +24,18 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
   
   const { data: transformations = [], isLoading } = useJobWorkTransformations();
 
-  // Mock data for outward entries with new/old material tracking
-  const mockOutwardData = [
-    {
-      id: "OW001",
-      dcDate: "2025-01-15",
-      vendorName: "Steel Fab Works",
-      newMaterialDetails: "MS Sheet 10mm - Cut pieces",
-      newSkuBatch: "MS-SHE-10-CUT / B001-P",
-      oldMaterialDetails: "MS Sheet 10mm - Raw",
-      oldSkuBatch: "MS-SHE-10 / B001",
-      status: "in_progress",
-      value: 45000
-    },
-    {
-      id: "OW002", 
-      dcDate: "2025-01-10",
-      vendorName: "Precision Tools Ltd",
-      newMaterialDetails: "SS Rod 12mm - Threaded",
-      newSkuBatch: "SS-ROD-12-THR / B002-P",
-      oldMaterialDetails: "SS Rod 12mm - Plain",
-      oldSkuBatch: "SS-ROD-12 / B002",
-      status: "ready_dispatch",
-      value: 85000
-    },
-    {
-      id: "OW003",
-      dcDate: "2025-01-05",
-      vendorName: "Welding Solutions",
-      newMaterialDetails: "MS Plate 20mm - Welded assembly",
-      newSkuBatch: "MS-PLA-20-WLD / B003-P",
-      oldMaterialDetails: "MS Plate 20mm - Raw",
-      oldSkuBatch: "MS-PLA-20 / B003",
-      status: "quality_issues",
-      value: 52000
-    }
-  ];
-
-  // Filter and search logic
+  // Filter and search logic - now using real data
   const filteredData = useMemo(() => {
-    let filtered = mockOutwardData.filter(item => {
+    let filtered = transformations.filter(item => {
       const matchesSearch = searchTerm === "" || 
-        item.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.newMaterialDetails.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.id.toLowerCase().includes(searchTerm.toLowerCase());
+        (item.contractor?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.input_sku?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.output_sku?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        item.job_work_number.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === "all" || item.status === statusFilter;
       
-      const itemDate = new Date(item.dcDate);
+      const itemDate = new Date(item.sent_date);
       const matchesDateRange = !dateRange.from || !dateRange.to ||
         (itemDate >= dateRange.from && itemDate <= dateRange.to);
       
@@ -81,38 +45,40 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
     // Sort the filtered data
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "dcDate":
-          return new Date(b.dcDate).getTime() - new Date(a.dcDate).getTime();
-        case "vendorName":
-          return a.vendorName.localeCompare(b.vendorName);
-        case "value":
-          return b.value - a.value;
+        case "sent_date":
+          return new Date(b.sent_date).getTime() - new Date(a.sent_date).getTime();
+        case "contractor":
+          return (a.contractor?.name || '').localeCompare(b.contractor?.name || '');
+        case "total_cost":
+          return (b.total_processing_cost || 0) - (a.total_processing_cost || 0);
+        case "created_at":
         default:
-          return 0;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
 
     return filtered;
-  }, [mockOutwardData, searchTerm, statusFilter, sortBy, dateRange]);
+  }, [transformations, searchTerm, statusFilter, sortBy, dateRange]);
 
-  // KPI calculations
+  // KPI calculations using real data
   const kpiData = useMemo(() => {
-    const activeJobWork = mockOutwardData.filter(item => item.status === "in_progress").length;
-    const readyForDispatch = mockOutwardData.filter(item => item.status === "ready_dispatch").length;
-    const totalValue = mockOutwardData.reduce((sum, item) => sum + item.value, 0);
+    const activeJobWork = transformations.filter(item => item.status === "sent" || item.status === "processing").length;
+    const readyForDispatch = transformations.filter(item => item.status === "completed").length;
+    const totalValue = transformations.reduce((sum, item) => sum + (item.total_processing_cost || 0), 0);
     
     return { activeJobWork, readyForDispatch, totalValue };
-  }, [mockOutwardData]);
+  }, [transformations]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      in_progress: { variant: "default" as const, label: "In Progress" },
-      ready_dispatch: { variant: "success" as const, label: "Ready for Dispatch" },
-      quality_issues: { variant: "destructive" as const, label: "Quality Issues" },
-      dispatched: { variant: "secondary" as const, label: "Dispatched" }
+      sent: { variant: "default" as const, label: "Sent to Contractor" },
+      processing: { variant: "default" as const, label: "Processing" },
+      completed: { variant: "success" as const, label: "Completed" },
+      quality_check: { variant: "warning" as const, label: "Quality Check" },
+      returned: { variant: "success" as const, label: "Returned" }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.in_progress;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.sent;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -135,7 +101,7 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
   const clearFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
-    setSortBy("dcDate");
+    setSortBy("created_at");
     setDateRange({});
   };
 
@@ -150,7 +116,7 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
           status="info"
           icon={Package}
           actionLabel="View Active"
-          onAction={() => setStatusFilter("in_progress")}
+          onAction={() => setStatusFilter("sent")}
           details={`${kpiData.activeJobWork} items currently being processed`}
         />
         <KpiCard
@@ -160,7 +126,7 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
           status="good"
           icon={CheckCircle}
           actionLabel="View Ready"
-          onAction={() => setStatusFilter("ready_dispatch")}
+          onAction={() => setStatusFilter("completed")}
           details={`${kpiData.readyForDispatch} items ready for collection`}
         />
         <KpiCard
@@ -214,11 +180,11 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
             <Table>
               <TableHeader>
                 <TableRow className="border-b">
-                  <TableHead className="text-xs font-medium px-2 sm:px-4">DC Date</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4">Vendor</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[180px]">NEW Material Details</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[140px]">SKU + Batch Code</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[180px]">OLD Material Details</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Sent Date</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Contractor</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[180px]">Output Material</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[140px]">Input Material</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[120px]">Process</TableHead>
                   <TableHead className="text-xs font-medium px-2 sm:px-4 w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -226,32 +192,41 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
                 {filteredData.map((item) => (
                   <TableRow key={item.id} className="hover:bg-muted/50">
                     <TableCell className="font-medium text-xs px-2 sm:px-4 py-2">
-                      {formatDate(item.dcDate)}
+                      {format(new Date(item.sent_date), 'dd/MM/yyyy')}
                     </TableCell>
                     <TableCell className="text-xs px-2 sm:px-4 py-2">
                       <div>
-                        <div className="font-medium">{item.vendorName}</div>
-                        <div className="text-muted-foreground text-xs">{item.id}</div>
+                        <div className="font-medium">{item.contractor?.name || 'Unknown Contractor'}</div>
+                        <div className="text-muted-foreground text-xs font-mono">{item.job_work_number}</div>
                       </div>
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
                       <div className="text-sm">
-                        <div className="font-medium">{item.newMaterialDetails}</div>
+                        <div className="font-medium">{item.output_sku?.name || 'Unknown Material'}</div>
                         <div className="text-xs text-muted-foreground mt-1">
                           {getStatusBadge(item.status)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Expected: {item.expected_output_weight_kg}kg
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
-                      <div className="text-xs">
-                        <div className="font-mono">{item.newSkuBatch}</div>
+                      <div className="text-sm">
+                        <div className="font-medium">{item.input_sku?.name || 'Unknown Material'}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Weight: {item.input_weight_kg}kg
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {item.input_batch?.batch_code || 'No batch'}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
                       <div className="text-sm">
-                        <div>{item.oldMaterialDetails}</div>
-                        <div className="text-xs text-muted-foreground font-mono mt-1">
-                          {item.oldSkuBatch}
+                        <div className="font-medium">{item.process_type}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.process_description}
                         </div>
                       </div>
                     </TableCell>
@@ -266,10 +241,17 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredData.length === 0 && (
+                {filteredData.length === 0 && !isLoading && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No outward entries found matching your criteria
+                      No job work transformations found matching your criteria
+                    </TableCell>
+                  </TableRow>
+                )}
+                {isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Loading job work data...
                     </TableCell>
                   </TableRow>
                 )}

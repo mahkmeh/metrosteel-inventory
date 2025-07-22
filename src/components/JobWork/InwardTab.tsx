@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Edit, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { JobWorkFilters } from "@/components/JobWorkFilters";
+import { useJobWorkTransformations } from "@/hooks/useJobWorkTransformations";
+import { format } from "date-fns";
 
 interface InwardTabProps {
   onCreateInward: () => void;
@@ -17,51 +19,28 @@ interface InwardTabProps {
 export const InwardTab = ({ onCreateInward }: InwardTabProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("dcDate");
+  const [sortBy, setSortBy] = useState("created_at");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
 
-  // Mock data for inward entries
-  const mockInwardData = [
-    {
-      id: "IW001",
-      dcDate: "2025-01-15",
-      vendorName: "Steel Fab Works",
-      materialDetails: "MS Sheet 10mm - Cut pieces",
-      status: "pending_receipt",
-      expectedDate: "2025-01-25",
-      overDueDays: 0,
-    },
-    {
-      id: "IW002",
-      dcDate: "2025-01-10", 
-      vendorName: "Precision Tools Ltd",
-      materialDetails: "SS Rod 12mm - Threaded",
-      status: "quality_check",
-      expectedDate: "2025-01-20",
-      overDueDays: 0,
-    },
-    {
-      id: "IW003",
-      dcDate: "2025-01-05",
-      vendorName: "Welding Solutions", 
-      materialDetails: "MS Plate 20mm - Welded assembly",
-      status: "received",
-      expectedDate: "2025-01-15",
-      overDueDays: 3,
-    }
-  ];
+  const { data: transformations = [], isLoading } = useJobWorkTransformations();
+
+  // Filter transformations to show only those expected to return (inward perspective)
+  const inwardTransformations = transformations.filter(t => 
+    t.status === 'sent' || t.status === 'processing' || t.status === 'completed' || t.status === 'quality_check'
+  );
 
   // Filter and search logic
   const filteredData = useMemo(() => {
-    let filtered = mockInwardData.filter(item => {
+    let filtered = inwardTransformations.filter(item => {
       const matchesSearch = searchTerm === "" || 
-        item.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.materialDetails.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.id.toLowerCase().includes(searchTerm.toLowerCase());
+        (item.contractor?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.input_sku?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.output_sku?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        item.job_work_number.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === "all" || item.status === statusFilter;
       
-      const itemDate = new Date(item.dcDate);
+      const itemDate = new Date(item.sent_date);
       const matchesDateRange = !dateRange.from || !dateRange.to ||
         (itemDate >= dateRange.from && itemDate <= dateRange.to);
       
@@ -71,38 +50,45 @@ export const InwardTab = ({ onCreateInward }: InwardTabProps) => {
     // Sort the filtered data
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "dcDate":
-          return new Date(b.dcDate).getTime() - new Date(a.dcDate).getTime();
-        case "expectedDate":
-          return new Date(a.expectedDate).getTime() - new Date(b.expectedDate).getTime();
-        case "vendorName":
-          return a.vendorName.localeCompare(b.vendorName);
+        case "sent_date":
+          return new Date(b.sent_date).getTime() - new Date(a.sent_date).getTime();
+        case "expected_return_date":
+          return new Date(a.expected_return_date || '').getTime() - new Date(b.expected_return_date || '').getTime();
+        case "contractor":
+          return (a.contractor?.name || '').localeCompare(b.contractor?.name || '');
+        case "created_at":
         default:
-          return 0;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
 
     return filtered;
-  }, [mockInwardData, searchTerm, statusFilter, sortBy, dateRange]);
+  }, [inwardTransformations, searchTerm, statusFilter, sortBy, dateRange]);
 
   // KPI calculations
   const kpiData = useMemo(() => {
-    const pendingReturns = mockInwardData.filter(item => item.status === "pending_receipt").length;
-    const qualityIssues = mockInwardData.filter(item => item.status === "quality_check").length;
-    const overdueReturns = mockInwardData.filter(item => item.overDueDays > 0).length;
+    const pendingReturns = inwardTransformations.filter(item => item.status === 'sent' || item.status === 'processing').length;
+    const qualityIssues = inwardTransformations.filter(item => item.status === 'quality_check').length;
+    const overdueReturns = inwardTransformations.filter(item => {
+      if (!item.expected_return_date) return false;
+      const expectedDate = new Date(item.expected_return_date);
+      const today = new Date();
+      return expectedDate < today && (item.status === 'sent' || item.status === 'processing');
+    }).length;
     
     return { pendingReturns, qualityIssues, overdueReturns };
-  }, [mockInwardData]);
+  }, [inwardTransformations]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending_receipt: { variant: "secondary" as const, label: "Pending Receipt" },
+      sent: { variant: "secondary" as const, label: "Sent to Contractor" },
+      processing: { variant: "default" as const, label: "Processing" },
       quality_check: { variant: "warning" as const, label: "Quality Check" },
-      received: { variant: "success" as const, label: "Received" },
-      rejected: { variant: "destructive" as const, label: "Rejected" }
+      completed: { variant: "success" as const, label: "Completed" },
+      returned: { variant: "success" as const, label: "Returned" }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending_receipt;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.sent;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -117,7 +103,7 @@ export const InwardTab = ({ onCreateInward }: InwardTabProps) => {
   const clearFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
-    setSortBy("dcDate");
+    setSortBy("created_at");
     setDateRange({});
   };
 
@@ -132,7 +118,7 @@ export const InwardTab = ({ onCreateInward }: InwardTabProps) => {
           status="warning"
           icon={Clock}
           actionLabel="View Pending"
-          onAction={() => setStatusFilter("pending_receipt")}
+          onAction={() => setStatusFilter("sent")}
           details={`${kpiData.pendingReturns} items pending return from contractors`}
         />
         <KpiCard
@@ -196,12 +182,12 @@ export const InwardTab = ({ onCreateInward }: InwardTabProps) => {
             <Table>
               <TableHeader>
                 <TableRow className="border-b">
-                  <TableHead className="text-xs font-medium px-2 sm:px-4">DC Date</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4">Vendor</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[200px]">Material Details</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Sent Date</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Contractor</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4 min-w-[200px]">Job Work Details</TableHead>
                   <TableHead className="text-xs font-medium px-2 sm:px-4">Status</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4">Expected</TableHead>
-                  <TableHead className="text-xs font-medium px-2 sm:px-4">Overdue</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Expected Return</TableHead>
+                  <TableHead className="text-xs font-medium px-2 sm:px-4">Job Number</TableHead>
                   <TableHead className="text-xs font-medium px-2 sm:px-4 w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -209,29 +195,35 @@ export const InwardTab = ({ onCreateInward }: InwardTabProps) => {
                 {filteredData.map((item) => (
                   <TableRow key={item.id} className="hover:bg-muted/50">
                     <TableCell className="font-medium text-xs px-2 sm:px-4 py-2">
-                      {formatDate(item.dcDate)}
+                      {format(new Date(item.sent_date), 'dd/MM/yyyy')}
                     </TableCell>
                     <TableCell className="text-xs px-2 sm:px-4 py-2">
                       <div>
-                        <div className="font-medium">{item.vendorName}</div>
-                        <div className="text-muted-foreground text-xs">{item.id}</div>
+                        <div className="font-medium">{item.contractor?.name || 'Unknown Contractor'}</div>
+                        <div className="text-muted-foreground text-xs">{item.process_type}</div>
                       </div>
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
-                      <span className="text-sm">{item.materialDetails}</span>
+                      <div className="text-sm">
+                        <div className="font-medium">
+                          {item.output_sku?.name || 'Unknown Material'} 
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Input: {item.input_sku?.name || 'Unknown'} ({item.input_weight_kg}kg)
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Expected: {item.expected_output_weight_kg}kg
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
                       {getStatusBadge(item.status)}
                     </TableCell>
-                    <TableCell className="text-xs px-2 sm:px-4 py-2">{formatDate(item.expectedDate)}</TableCell>
-                    <TableCell className="px-2 sm:px-4 py-2">
-                      {item.overDueDays > 0 ? (
-                        <Badge variant="destructive" className="text-xs px-1 py-0">
-                          {item.overDueDays}d
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">-</span>
-                      )}
+                    <TableCell className="text-xs px-2 sm:px-4 py-2">
+                      {item.expected_return_date ? format(new Date(item.expected_return_date), 'dd/MM/yyyy') : 'Not set'}
+                    </TableCell>
+                    <TableCell className="text-xs px-2 sm:px-4 py-2 font-mono">
+                      {item.job_work_number}
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 py-2">
                       <Button
@@ -244,10 +236,17 @@ export const InwardTab = ({ onCreateInward }: InwardTabProps) => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredData.length === 0 && (
+                {filteredData.length === 0 && !isLoading && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No inward entries found matching your criteria
+                      No job work transformations found matching your criteria
+                    </TableCell>
+                  </TableRow>
+                )}
+                {isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Loading job work data...
                     </TableCell>
                   </TableRow>
                 )}
