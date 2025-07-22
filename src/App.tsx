@@ -1,12 +1,12 @@
-import React from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/hooks/use-theme";
+import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "next-themes";
 import Layout from "./components/Layout";
-import Dashboard from "./pages/Dashboard";
+
+// Import pages
+import Index from "./pages/Index";
 import Materials from "./pages/Materials";
 import MaterialDetails from "./pages/MaterialDetails";
 import Customers from "./pages/Customers";
@@ -18,41 +18,41 @@ import Vendors from "./pages/Vendors";
 import PurchaseReturn from "./pages/PurchaseReturn";
 import Payables from "./pages/Payables";
 import JobWork from "./pages/JobWork";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App: React.FC = () => {
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="steel-trader-theme">
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="materials" element={<Materials />} />
-                <Route path="materials/:id" element={<MaterialDetails />} />
-                <Route path="customers" element={<Customers />} />
-                <Route path="quotations" element={<Quotations />} />
-                <Route path="purchase" element={<Purchase />} />
-                <Route path="purchase/invoice" element={<PurchaseInvoice />} />
-                <Route path="purchase/vendors" element={<Vendors />} />
-                <Route path="purchase/return" element={<PurchaseReturn />} />
-                <Route path="purchase/payables" element={<Payables />} />
-                <Route path="sales" element={<Sales />} />
-                <Route path="jobwork" element={<JobWork />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              </Route>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="materials" element={<Materials />} />
+              <Route path="materials/:id" element={<MaterialDetails />} />
+              <Route path="customers" element={<Customers />} />
+              <Route path="quotations" element={<Quotations />} />
+              <Route path="sales" element={<Sales />} />
+              <Route path="purchase" element={<Purchase />} />
+              <Route path="purchase/invoice" element={<PurchaseInvoice />} />
+              <Route path="purchase/vendors" element={<Vendors />} />
+              <Route path="purchase/return" element={<PurchaseReturn />} />
+              <Route path="purchase/payables" element={<Payables />} />
+              <Route path="jobwork" element={<JobWork />} />
+              <Route path="jobwork/inward" element={<JobWork />} />
+              <Route path="jobwork/outward" element={<JobWork />} />
+              <Route path="jobwork/contractors" element={<JobWork />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+            </Route>
+          </Routes>
+        </Router>
+        <Toaster />
       </ThemeProvider>
     </QueryClientProvider>
   );
-};
+}
 
 export default App;

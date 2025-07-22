@@ -1,3 +1,4 @@
+
 import { Package, Warehouse, Users, FileText, ShoppingCart, BarChart3, Moon, Sun, Monitor, Truck, Wrench, Receipt, Building, RotateCcw, CreditCard, ChevronDown } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useTheme } from "@/hooks/use-theme"
@@ -29,7 +30,6 @@ const navigation = [
   { title: "Customers", url: "/customers", icon: Users },
   { title: "Quotations", url: "/quotations", icon: FileText },
   { title: "Sales", url: "/sales", icon: ShoppingCart },
-  { title: "Job Work", url: "/jobwork", icon: Wrench },
 ]
 
 const purchaseNavigation = [
@@ -40,6 +40,12 @@ const purchaseNavigation = [
   { title: "Payables", url: "/purchase/payables", icon: CreditCard },
 ]
 
+const jobWorkNavigation = [
+  { title: "Inward", url: "/jobwork/inward", icon: Package },
+  { title: "Outward", url: "/jobwork/outward", icon: Truck },
+  { title: "Contractors", url: "/jobwork/contractors", icon: Users },
+]
+
 export function AppSidebar() {
   const { state } = useSidebar()
   const location = useLocation()
@@ -47,9 +53,13 @@ export function AppSidebar() {
   const [purchaseExpanded, setPurchaseExpanded] = useState(
     location.pathname.startsWith("/purchase")
   )
+  const [jobWorkExpanded, setJobWorkExpanded] = useState(
+    location.pathname.startsWith("/jobwork")
+  )
   
   const isActive = (path: string) => location.pathname === path
   const isPurchaseActive = location.pathname.startsWith("/purchase")
+  const isJobWorkActive = location.pathname.startsWith("/jobwork")
   const collapsed = state === "collapsed"
 
   return (
@@ -103,6 +113,40 @@ export function AppSidebar() {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Job Work Module */}
+        <SidebarGroup>
+          <Collapsible 
+            open={jobWorkExpanded} 
+            onOpenChange={setJobWorkExpanded}
+            className="w-full"
+          >
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md">
+                <span>JOB WORK</span>
+                {!collapsed && (
+                  <ChevronDown className={`h-4 w-4 transition-transform ${jobWorkExpanded ? 'rotate-180' : ''}`} />
+                )}
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {jobWorkNavigation.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={isActive(item.url)} className="pl-6">
+                        <NavLink to={item.url} end>
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
         </SidebarGroup>
 
         {/* Purchase Module */}
