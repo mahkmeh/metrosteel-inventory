@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, AlertTriangle, CheckCircle, Plus } from "lucide-react";
+import { ChevronDown, AlertTriangle, CheckCircle, Plus, Package } from "lucide-react";
 import { categoryTemplates, getTemplateByCategory } from "./CategoryTemplates";
 import { SimplifiedBatchForm } from "./SimplifiedBatchForm";
 

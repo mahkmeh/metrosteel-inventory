@@ -1,5 +1,5 @@
 
-import { Package, Pipe, Minus, Square, Triangle } from "lucide-react";
+import { Package, Circle, Minus, Square, Triangle } from "lucide-react";
 
 export interface MaterialTemplate {
   name: string;
@@ -49,7 +49,7 @@ export const categoryTemplates: Record<string, MaterialTemplate> = {
     displayName: "Steel Pipes",
     description: "Round pipes & tubes",
     category: "Pipe",
-    icon: Pipe,
+    icon: Circle,
     fields: {
       unit: "KG",
       finish: "Annealed",
@@ -63,13 +63,13 @@ export const categoryTemplates: Record<string, MaterialTemplate> = {
         key: "OD",
         name: "Outer Diameter (OD)",
         description: "Measured by outer diameter",
-        icon: Pipe
+        icon: Circle
       },
       {
         key: "NB",
         name: "Nominal Bore (NB)",
         description: "Measured by internal bore",
-        icon: Pipe
+        icon: Circle
       }
     ]
   },
