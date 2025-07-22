@@ -18,6 +18,8 @@ import { SubTypeStep } from "@/components/MaterialForm/steps/SubTypeStep";
 import { StreamlinedMaterialForm } from "@/components/MaterialForm/steps/StreamlinedMaterialForm";
 import { BatchManagementModal } from "@/components/BatchManagementModal";
 import { useCreateBatch } from "@/hooks/useBatches";
+import { MaterialTemplateForm } from "@/components/MaterialForm/MaterialTemplateForm";
+import { MobileFormSheet } from "@/components/MaterialForm/MobileFormSheet";
 
 const Materials = () => {
   const navigate = useNavigate();
@@ -527,87 +529,10 @@ const Materials = () => {
           <h1 className="text-3xl font-bold text-foreground">Materials</h1>
           <p className="text-muted-foreground">Manage your steel material catalog</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditingMaterial(null);
-            resetForm();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Material
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingMaterial ? "Edit Material" : "Add New Material"}</DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-6">
-              <MaterialFormSteps currentStep={currentStep} totalSteps={getTotalSteps()} />
-              
-              {renderCurrentStep()}
-              
-              {getSKUValidationMessage() && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
-                  <p className="text-sm text-destructive font-medium">
-                    {getSKUValidationMessage()}
-                  </p>
-                </div>
-              )}
-              
-              <div className="flex justify-between">
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={currentStep === 1}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Previous
-                </Button>
-                
-                <div className="flex gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      setIsDialogOpen(false);
-                      setEditingMaterial(null);
-                      resetForm();
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  
-                  {currentStep < getTotalSteps() ? (
-                    <Button 
-                      type="button"
-                      onClick={handleNext}
-                      disabled={!canProceedToNext()}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  ) : (
-                    <Button 
-                      type="button"
-                      onClick={handleSubmit}
-                      disabled={createMaterial.isPending || !canProceedToNext()}
-                    >
-                      {createMaterial.isPending 
-                        ? (editingMaterial ? "Updating..." : "Creating...") 
-                        : (editingMaterial ? "Update Material" : "Create Material")
-                      }
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Material
+        </Button>
       </div>
 
       <div className="mb-6">
@@ -621,6 +546,28 @@ const Materials = () => {
           />
         </div>
       </div>
+
+      {/* Updated Form Modal/Sheet */}
+      <MobileFormSheet
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingMaterial(null);
+            resetForm();
+          }
+        }}
+        title={editingMaterial ? "Edit Material" : "Add New Material"}
+      >
+        <MaterialTemplateForm
+          formData={formData}
+          onFormDataChange={setFormData}
+          existingSKUs={existingSKUs}
+          isEditing={!!editingMaterial}
+          onSubmit={handleSubmit}
+          isSubmitting={createMaterial.isPending}
+        />
+      </MobileFormSheet>
 
       {/* loading state and table */}
       {isLoading ? (
