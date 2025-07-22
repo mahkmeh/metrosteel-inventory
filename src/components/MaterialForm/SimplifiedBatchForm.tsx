@@ -26,14 +26,9 @@ export const SimplifiedBatchForm: React.FC<SimplifiedBatchFormProps> = ({
   onBatchesChange,
   defaultMake = "",
 }) => {
-  const generateBatchCode = () => {
-    const timestamp = Date.now().toString().slice(-6);
-    return `BATCH-${timestamp}`;
-  };
-
   const addBatch = () => {
     const newBatch: Batch = {
-      batch_code: generateBatchCode(),
+      batch_code: "",
       total_weight_kg: 0,
       heat_number: "",
       make: defaultMake,
@@ -95,7 +90,7 @@ export const SimplifiedBatchForm: React.FC<SimplifiedBatchFormProps> = ({
                   id={`batch_code_${index}`}
                   value={batch.batch_code}
                   onChange={(e) => updateBatch(index, "batch_code", e.target.value)}
-                  placeholder="e.g., BATCH-123456"
+                  placeholder="Enter batch code (e.g., BATCH-001)"
                   required
                 />
               </div>

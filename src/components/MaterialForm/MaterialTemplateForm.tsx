@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -78,7 +77,7 @@ export const MaterialTemplateForm: React.FC<MaterialTemplateFormProps> = ({
       // Initialize with single batch if no batches exist
       batches: formData.batches?.length > 0 ? formData.batches : [
         {
-          batch_code: `BATCH-${Date.now()}`,
+          batch_code: "",
           total_weight_kg: 0,
           heat_number: "",
           make: formData.make || "",
