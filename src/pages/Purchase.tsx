@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, Truck, Package, X, Search, AlertTriangle, DollarSign, AlertCircle } from "lucide-react";
+import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, Truck, Package, X, Search, AlertTriangle, DollarSign, AlertCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedProductSelectionModal } from "@/components/EnhancedProductSelectionModal";
 import { KpiCard } from "@/components/KpiCard";
 import { usePurchaseKpis } from "@/hooks/usePurchaseKpis";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const Purchase = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -27,6 +28,11 @@ const Purchase = () => {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showProductModal, setShowProductModal] = useState(false);
+  const [poNumberValidation, setPoNumberValidation] = useState<{
+    isValid: boolean;
+    isChecking: boolean;
+    message?: string;
+  }>({ isValid: true, isChecking: false });
   const [formData, setFormData] = useState({
     po_number: "",
     supplier_id: "",
@@ -40,6 +46,25 @@ const Purchase = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: kpiData, isLoading: kpiLoading } = usePurchaseKpis();
+
+  // Debounce PO number for validation
+  const debouncedPoNumber = useDebounce(formData.po_number, 500);
+
+  // Auto-generate PO number when dialog opens for new orders
+  useEffect(() => {
+    if (isDialogOpen && !editingOrder && !formData.po_number) {
+      generatePoNumber();
+    }
+  }, [isDialogOpen, editingOrder]);
+
+  // Validate PO number in real-time
+  useEffect(() => {
+    if (debouncedPoNumber && !editingOrder) {
+      validatePoNumber(debouncedPoNumber);
+    } else {
+      setPoNumberValidation({ isValid: true, isChecking: false });
+    }
+  }, [debouncedPoNumber, editingOrder]);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["purchase-orders", sortField, sortDirection],
@@ -214,6 +239,55 @@ const Purchase = () => {
     },
   });
 
+  // Generate PO number
+  const generatePoNumber = async () => {
+    try {
+      const { data, error } = await supabase.rpc('generate_po_number');
+      if (error) throw error;
+      setFormData(prev => ({ ...prev, po_number: data }));
+      setPoNumberValidation({ isValid: true, isChecking: false });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PO number: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Validate PO number
+  const validatePoNumber = async (poNumber: string) => {
+    if (!poNumber.trim()) {
+      setPoNumberValidation({ isValid: true, isChecking: false });
+      return;
+    }
+
+    setPoNumberValidation({ isValid: true, isChecking: true });
+    
+    try {
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .select('id')
+        .eq('po_number', poNumber.trim())
+        .limit(1);
+      
+      if (error) throw error;
+      
+      const isDuplicate = data && data.length > 0;
+      setPoNumberValidation({
+        isValid: !isDuplicate,
+        isChecking: false,
+        message: isDuplicate ? 'This PO number already exists' : undefined
+      });
+    } catch (error: any) {
+      setPoNumberValidation({
+        isValid: false,
+        isChecking: false,
+        message: 'Error checking PO number: ' + error.message
+      });
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       po_number: "",
@@ -228,10 +302,21 @@ const Purchase = () => {
     setSearchQuery("");
     setEditingOrder(null);
     setIsDialogOpen(false);
+    setPoNumberValidation({ isValid: true, isChecking: false });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!poNumberValidation.isValid) {
+      toast({
+        title: "Error",
+        description: poNumberValidation.message || "Please fix the PO number",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (orderItems.length === 0) {
       toast({
         title: "Error",
@@ -240,6 +325,16 @@ const Purchase = () => {
       });
       return;
     }
+    
+    if (!formData.po_number.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a PO number",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     createOrderMutation.mutate(formData);
   };
 
@@ -449,12 +544,34 @@ const Purchase = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="po_number">PO Number</Label>
-                          <Input
-                            id="po_number"
-                            value={formData.po_number}
-                            onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
-                            placeholder="Enter PO number"
-                          />
+                          <div className="flex gap-2">
+                            <Input
+                              id="po_number"
+                              value={formData.po_number}
+                              onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
+                              placeholder="Enter PO number"
+                              className={!poNumberValidation.isValid ? "border-destructive" : ""}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={generatePoNumber}
+                              disabled={editingOrder !== null}
+                              title="Generate PO Number"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {poNumberValidation.isChecking && (
+                            <p className="text-xs text-muted-foreground mt-1">Checking availability...</p>
+                          )}
+                          {!poNumberValidation.isValid && poNumberValidation.message && (
+                            <p className="text-xs text-destructive mt-1">{poNumberValidation.message}</p>
+                          )}
+                          {poNumberValidation.isValid && formData.po_number && !poNumberValidation.isChecking && !editingOrder && (
+                            <p className="text-xs text-green-600 mt-1">PO number is available</p>
+                          )}
                         </div>
                         <div>
                           <Label htmlFor="supplier_id">Supplier</Label>
@@ -713,7 +830,16 @@ const Purchase = () => {
                   </Card>
 
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={createOrderMutation.isPending || orderItems.length === 0}>
+                    <Button 
+                      type="submit" 
+                      disabled={
+                        createOrderMutation.isPending || 
+                        orderItems.length === 0 || 
+                        !poNumberValidation.isValid ||
+                        poNumberValidation.isChecking ||
+                        !formData.po_number.trim()
+                      }
+                    >
                       {createOrderMutation.isPending ? "Saving..." : editingOrder ? "Update Order" : "Create Order"}
                     </Button>
                   </div>
