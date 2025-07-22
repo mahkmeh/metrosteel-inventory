@@ -1,10 +1,11 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, X, Package } from "lucide-react";
 
 interface Batch {
   batch_code: string;
@@ -25,21 +26,20 @@ export const SimplifiedBatchForm: React.FC<SimplifiedBatchFormProps> = ({
   onBatchesChange,
   defaultMake = "",
 }) => {
+  const generateBatchCode = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    return `BATCH-${timestamp}`;
+  };
+
   const addBatch = () => {
     const newBatch: Batch = {
-      batch_code: `BATCH-${Date.now()}`,
+      batch_code: generateBatchCode(),
       total_weight_kg: 0,
       heat_number: "",
       make: defaultMake,
       notes: "",
     };
     onBatchesChange([...batches, newBatch]);
-  };
-
-  const removeBatch = (index: number) => {
-    if (batches.length > 1) {
-      onBatchesChange(batches.filter((_, i) => i !== index));
-    }
   };
 
   const updateBatch = (index: number, field: keyof Batch, value: string | number) => {
@@ -49,36 +49,44 @@ export const SimplifiedBatchForm: React.FC<SimplifiedBatchFormProps> = ({
     onBatchesChange(updatedBatches);
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-medium">Initial Stock Batches</h4>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={addBatch}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Batch
-        </Button>
-      </div>
+  const removeBatch = (index: number) => {
+    if (batches.length > 1) {
+      const updatedBatches = batches.filter((_, i) => i !== index);
+      onBatchesChange(updatedBatches);
+    }
+  };
 
-      {batches.map((batch, index) => (
-        <Card key={index} className="relative">
-          <CardContent className="pt-4">
-            {batches.length > 1 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeBatch(index)}
-                className="absolute top-2 right-2 h-6 w-6 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+  // Initialize with one batch if empty
+  React.useEffect(() => {
+    if (batches.length === 0) {
+      addBatch();
+    }
+  }, []);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="h-5 w-5" />
+          Initial Batches
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {batches.map((batch, index) => (
+          <div key={index} className="border rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm">Batch #{index + 1}</h4>
+              {batches.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeBatch(index)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -87,17 +95,17 @@ export const SimplifiedBatchForm: React.FC<SimplifiedBatchFormProps> = ({
                   id={`batch_code_${index}`}
                   value={batch.batch_code}
                   onChange={(e) => updateBatch(index, "batch_code", e.target.value)}
-                  placeholder="e.g., BATCH-001"
+                  placeholder="e.g., BATCH-123456"
                   required
                 />
               </div>
               
               <div>
-                <Label htmlFor={`weight_${index}`}>Weight (KG) *</Label>
+                <Label htmlFor={`weight_${index}`}>Total Weight (KG) *</Label>
                 <Input
                   id={`weight_${index}`}
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   value={batch.total_weight_kg || ""}
                   onChange={(e) => updateBatch(index, "total_weight_kg", parseFloat(e.target.value) || 0)}
                   placeholder="e.g., 1000"
@@ -111,7 +119,7 @@ export const SimplifiedBatchForm: React.FC<SimplifiedBatchFormProps> = ({
                   id={`heat_number_${index}`}
                   value={batch.heat_number || ""}
                   onChange={(e) => updateBatch(index, "heat_number", e.target.value)}
-                  placeholder="Optional"
+                  placeholder="e.g., HN-2024-001"
                 />
               </div>
               
@@ -121,13 +129,34 @@ export const SimplifiedBatchForm: React.FC<SimplifiedBatchFormProps> = ({
                   id={`make_${index}`}
                   value={batch.make || ""}
                   onChange={(e) => updateBatch(index, "make", e.target.value)}
-                  placeholder="Manufacturer"
+                  placeholder="e.g., Jindal, Tata Steel"
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+            
+            <div>
+              <Label htmlFor={`notes_${index}`}>Notes</Label>
+              <Textarea
+                id={`notes_${index}`}
+                value={batch.notes || ""}
+                onChange={(e) => updateBatch(index, "notes", e.target.value)}
+                placeholder="Additional notes about this batch..."
+                className="min-h-[60px]"
+              />
+            </div>
+          </div>
+        ))}
+        
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addBatch}
+          className="w-full flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add Another Batch
+        </Button>
+      </CardContent>
+    </Card>
   );
 };

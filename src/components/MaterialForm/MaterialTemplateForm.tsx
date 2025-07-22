@@ -37,6 +37,8 @@ export const MaterialTemplateForm: React.FC<MaterialTemplateFormProps> = ({
   isSubmitting = false,
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [selectedSubType, setSelectedSubType] = useState<string>("");
+  const [showSubTypeSelection, setShowSubTypeSelection] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
   
@@ -48,23 +50,57 @@ export const MaterialTemplateForm: React.FC<MaterialTemplateFormProps> = ({
     setSelectedTemplate(templateKey);
     const template = getTemplateByCategory(templateKey);
     if (template) {
-      const updatedData = {
-        ...formData,
-        category: template.category,
-        ...template.fields,
-        // Initialize with single batch if no batches exist
-        batches: formData.batches?.length > 0 ? formData.batches : [
-          {
-            batch_code: `BATCH-${Date.now()}`,
-            total_weight_kg: 0,
-            heat_number: "",
-            make: formData.make || "",
-            notes: "",
-          }
-        ],
-      };
-      onFormDataChange(updatedData);
+      // Check if template has sub-types
+      if (template.subTypes && template.subTypes.length > 0) {
+        setShowSubTypeSelection(true);
+        return;
+      }
+      
+      // No sub-types, proceed with template setup
+      setupTemplate(template);
     }
+  };
+
+  const handleSubTypeSelect = (subTypeKey: string) => {
+    setSelectedSubType(subTypeKey);
+    const template = getTemplateByCategory(selectedTemplate);
+    if (template) {
+      setupTemplate(template, subTypeKey);
+      setShowSubTypeSelection(false);
+    }
+  };
+
+  const setupTemplate = (template: any, subType?: string) => {
+    const updatedData = {
+      ...formData,
+      category: template.category,
+      ...template.fields,
+      // Initialize with single batch if no batches exist
+      batches: formData.batches?.length > 0 ? formData.batches : [
+        {
+          batch_code: `BATCH-${Date.now()}`,
+          total_weight_kg: 0,
+          heat_number: "",
+          make: formData.make || "",
+          notes: "",
+        }
+      ],
+    };
+
+    // Set sub-type specific fields
+    if (subType) {
+      if (template.category === "Pipe") {
+        updatedData.pipe_type = subType;
+      } else if (template.category === "Bar") {
+        updatedData.bar_shape = subType;
+        // Adjust dimension fields based on bar shape
+        if (subType !== "Round") {
+          updatedData.dimensionFields = ["width", "length"];
+        }
+      }
+    }
+
+    onFormDataChange(updatedData);
   };
 
   const handleBatchesChange = (newBatches: Batch[]) => {
@@ -140,30 +176,84 @@ export const MaterialTemplateForm: React.FC<MaterialTemplateFormProps> = ({
       {!selectedTemplate && !formData.category && (
         <Card>
           <CardHeader>
-            <CardTitle>Select Material Type</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Choose Material Type
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {Object.entries(categoryTemplates).map(([key, template]) => (
-                <Button
-                  key={key}
-                  variant="outline"
-                  className="h-16 p-3 text-center"
-                  onClick={() => handleTemplateSelect(key)}
-                >
-                  <div>
-                    <div className="font-medium">{template.name}</div>
-                    <div className="text-xs text-muted-foreground">{template.category}</div>
-                  </div>
-                </Button>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(categoryTemplates).map(([key, template]) => {
+                const IconComponent = template.icon;
+                return (
+                  <Button
+                    key={key}
+                    variant="outline"
+                    className="h-20 p-4 text-left flex-col justify-start hover:border-primary hover:bg-primary/5"
+                    onClick={() => handleTemplateSelect(key)}
+                  >
+                    <div className="flex items-center gap-3 w-full">
+                      <IconComponent className="h-6 w-6 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{template.displayName}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{template.description}</div>
+                      </div>
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sub-type Selection (for Pipe and Bar) */}
+      {showSubTypeSelection && selectedTemplate && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Select {categoryTemplates[selectedTemplate].displayName} Type
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {categoryTemplates[selectedTemplate].subTypes?.map((subType) => {
+                const IconComponent = subType.icon;
+                return (
+                  <Button
+                    key={subType.key}
+                    variant="outline"
+                    className="h-16 p-4 text-left flex-col justify-start hover:border-primary hover:bg-primary/5"
+                    onClick={() => handleSubTypeSelect(subType.key)}
+                  >
+                    <div className="flex items-center gap-3 w-full">
+                      <IconComponent className="h-5 w-5 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{subType.name}</div>
+                        <div className="text-xs text-muted-foreground">{subType.description}</div>
+                      </div>
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+            <div className="mt-4">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowSubTypeSelection(false);
+                  setSelectedTemplate("");
+                }}
+              >
+                ← Back to categories
+              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Main Form */}
-      {(selectedTemplate || formData.category) && (
+      {(selectedTemplate || formData.category) && !showSubTypeSelection && (
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-6">
@@ -255,38 +345,6 @@ export const MaterialTemplateForm: React.FC<MaterialTemplateFormProps> = ({
                 {renderDimensionFields()}
               </div>
 
-              {/* Sub-type fields for Pipe and Bar */}
-              {formData.category === "Pipe" && (
-                <div>
-                  <Label htmlFor="pipe_type">Pipe Type</Label>
-                  <Select value={formData.pipe_type || ""} onValueChange={(value) => updateField("pipe_type", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select pipe type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="OD">OD (Outer Diameter)</SelectItem>
-                      <SelectItem value="NB">NB (Nominal Bore)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {formData.category === "Bar" && (
-                <div>
-                  <Label htmlFor="bar_shape">Bar Shape</Label>
-                  <Select value={formData.bar_shape || ""} onValueChange={(value) => updateField("bar_shape", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select bar shape" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Round">Round</SelectItem>
-                      <SelectItem value="Square">Square</SelectItem>
-                      <SelectItem value="Hex">Hex</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               {/* Advanced Fields - Collapsible */}
               <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
                 <CollapsibleTrigger asChild>
@@ -358,7 +416,7 @@ export const MaterialTemplateForm: React.FC<MaterialTemplateFormProps> = ({
       )}
 
       {/* Batch Management */}
-      {(selectedTemplate || formData.category) && (
+      {(selectedTemplate || formData.category) && !showSubTypeSelection && (
         <SimplifiedBatchForm
           batches={formData.batches || []}
           onBatchesChange={handleBatchesChange}
@@ -367,7 +425,7 @@ export const MaterialTemplateForm: React.FC<MaterialTemplateFormProps> = ({
       )}
 
       {/* Submit Button */}
-      {(selectedTemplate || formData.category) && (
+      {(selectedTemplate || formData.category) && !showSubTypeSelection && (
         <div className="flex justify-end gap-3">
           <Button 
             type="button"
