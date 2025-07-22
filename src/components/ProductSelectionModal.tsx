@@ -14,8 +14,13 @@ interface Material {
   sku: string;
   category: string;
   grade: string;
-  base_price: number;
+  base_price?: number;
   batch_no?: string;
+  heat_number?: string;
+  // Add other properties that exist in the real materials table
+  description?: string;
+  unit?: string;
+  is_active?: boolean;
 }
 
 interface ProductSelectionModalProps {

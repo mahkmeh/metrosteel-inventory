@@ -249,10 +249,10 @@ const JobWork = () => {
       materialId: material.id,
       materialName: material.name,
       sku: material.sku,
-      batchNumber: material.batch_no || "",
+      batchNumber: material.batch_no || material.heat_number || "",
       quantity: 0,
-      currentStock: 100, // Mock stock value
-      basePrice: material.base_price,
+      currentStock: 100, // Mock stock value - will be replaced with real inventory data
+      basePrice: material.base_price || 0,
       jobworkDetails: ""
     };
 
@@ -263,10 +263,10 @@ const JobWork = () => {
   };
 
   const handleQuickSearch = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && quickSearchTerm.trim()) {
+    if (e.key === 'Enter' && quickSearchTerm.trim() && materials && materials.length > 0) {
       const material = materials.find(m => 
-        m.name.toLowerCase().includes(quickSearchTerm.toLowerCase()) ||
-        m.sku.toLowerCase().includes(quickSearchTerm.toLowerCase())
+        m.name?.toLowerCase().includes(quickSearchTerm.toLowerCase()) ||
+        m.sku?.toLowerCase().includes(quickSearchTerm.toLowerCase())
       );
       
       if (material) {
@@ -964,7 +964,7 @@ const JobWork = () => {
       <ProductSelectionModal
         open={productModalOpen}
         onOpenChange={setProductModalOpen}
-        materials={materials}
+        materials={materials || []}
         onSelectMaterial={handleSelectMaterial}
       />
     </div>
@@ -1215,7 +1215,7 @@ const JobWork = () => {
       <ProductSelectionModal
         open={productModalOpen}
         onOpenChange={setProductModalOpen}
-        materials={materials}
+        materials={materials || []}
         onSelectMaterial={handleSelectMaterial}
       />
     </div>
