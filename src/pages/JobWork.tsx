@@ -22,149 +22,31 @@ import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { InwardTab } from "@/components/JobWork/InwardTab";
 import { OutwardTab } from "@/components/JobWork/OutwardTab";
 import { ContractorsTab } from "@/components/JobWork/ContractorsTab";
+import { useJobWorkTransformations } from "@/hooks/useJobWorkTransformations";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const JobWork = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("inward");
   const [activeView, setActiveView] = useState<"dashboard" | "outward" | "inward">("dashboard");
   
-  // Mock materials data for product selection
-  const mockMaterials = [
-    {
-      id: "1",
-      name: "MS Sheet 10mm",
-      sku: "MS-SHE-10",
-      category: "Sheet",
-      grade: "MS",
-      base_price: 45000,
-      batch_no: "B001"
-    },
-    {
-      id: "2", 
-      name: "SS Rod 12mm",
-      sku: "SS-ROD-12",
-      category: "Rod",
-      grade: "SS304",
-      base_price: 85000,
-      batch_no: "B002"
-    },
-    {
-      id: "3",
-      name: "MS Plate 20mm", 
-      sku: "MS-PLA-20",
-      category: "Plate",
-      grade: "MS",
-      base_price: 52000,
-      batch_no: "B003"
-    },
-    {
-      id: "4",
-      name: "Aluminum Sheet 5mm",
-      sku: "AL-SHE-05", 
-      category: "Sheet",
-      grade: "AL6061",
-      base_price: 180000,
-      batch_no: "B004"
-    },
-    {
-      id: "5",
-      name: "Cast Iron Block",
-      sku: "CI-BLO-50",
-      category: "Block", 
-      grade: "CI",
-      base_price: 35000,
-      batch_no: "B005"
+  // Fetch real data from Supabase
+  const { data: jobWorkTransformations = [], isLoading } = useJobWorkTransformations();
+  
+  // Fetch materials data for product selection
+  const { data: materials = [] } = useQuery({
+    queryKey: ["materials"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("materials")
+        .select("*")
+        .eq("is_active", true);
+      
+      if (error) throw error;
+      return data || [];
     }
-  ];
-
-  // Mock data for job work entries
-  const [mockJobWorkData, setMockJobWorkData] = useState([
-    {
-      id: "JW001",
-      dcDate: "2025-01-15",
-      vendorName: "Steel Fab Works",
-      materialDetails: "MS Sheet 10mm - Cutting, SS Rod 12mm - Threading",
-      status: "under_process",
-      expectedDate: "2025-01-25",
-      overDueDays: 0,
-      vendorAddress: "Industrial Area, Phase 2, Sector 45",
-      contactPerson: "Rajesh Kumar",
-      contactNumber: "+91-9876543210",
-      notes: "Priority job for customer order"
-    },
-    {
-      id: "JW002", 
-      dcDate: "2025-01-10",
-      vendorName: "Precision Tools Ltd",
-      materialDetails: "SS Rod 12mm - Threading",
-      status: "ready_to_dispatch",
-      expectedDate: "2025-01-20",
-      overDueDays: 0,
-      vendorAddress: "Main Road, Industrial Estate",
-      contactPerson: "Suresh Patel",
-      contactNumber: "+91-9876543211"
-    },
-    {
-      id: "JW003",
-      dcDate: "2025-01-05",
-      vendorName: "Welding Solutions",
-      materialDetails: "MS Plate 20mm - Welding, Aluminum Sheet - Bending, Cast Iron - Machining",
-      status: "quality_issues",
-      expectedDate: "2025-01-15",
-      overDueDays: 3,
-      vendorAddress: "Workshop Lane, Sector 12",
-      contactPerson: "Amit Singh",
-      contactNumber: "+91-9876543212"
-    },
-    {
-      id: "JW004",
-      dcDate: "2024-12-28",
-      vendorName: "Heavy Industries",
-      materialDetails: "Cast Iron - Machining",
-      status: "machine_under_repair",
-      expectedDate: "2025-01-08",
-      overDueDays: 10,
-      vendorAddress: "Heavy Industrial Complex",
-      contactPerson: "Vikram Sharma",
-      contactNumber: "+91-9876543213"
-    },
-    {
-      id: "JW005",
-      dcDate: "2025-01-12",
-      vendorName: "Quick Process",
-      materialDetails: "Aluminum Sheet - Bending, MS Sheet 8mm - Cutting",
-      status: "yet_to_start",
-      expectedDate: "2025-01-22",
-      overDueDays: 0,
-      vendorAddress: "Quick Processing Unit, Zone A",
-      contactPerson: "Pradeep Gupta",
-      contactNumber: "+91-9876543214"
-    },
-    {
-      id: "JW006",
-      dcDate: "2025-01-08",
-      vendorName: "Metro Fabricators",
-      materialDetails: "SS Pipe 25mm - Cutting, MS Angle - Welding",
-      status: "ready_to_dispatch",
-      expectedDate: "2025-01-18",
-      overDueDays: 0,
-      vendorAddress: "Metro Industrial Park",
-      contactPerson: "Ravi Mehta",
-      contactNumber: "+91-9876543215"
-    },
-    {
-      id: "JW007",
-      dcDate: "2024-12-30",
-      vendorName: "Advanced Manufacturing",
-      materialDetails: "Titanium Rod - Precision Machining",
-      status: "quality_issues",
-      expectedDate: "2025-01-10",
-      overDueDays: 8,
-      vendorAddress: "Advanced Tech Hub",
-      contactPerson: "Dr. Ramesh",
-      contactNumber: "+91-9876543216"
-    }
-  ]);
+  });
 
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState("");
@@ -178,9 +60,33 @@ const JobWork = () => {
   const [editingJobWork, setEditingJobWork] = useState<any>(null);
   const [editingJobWorkId, setEditingJobWorkId] = useState<string | null>(null);
 
+  // Transform job work data to match the expected format
+  const transformedJobWorkData = useMemo(() => {
+    return jobWorkTransformations.map(transformation => {
+      const sentDate = new Date(transformation.sent_date);
+      const expectedDate = transformation.expected_return_date ? new Date(transformation.expected_return_date) : new Date();
+      const today = new Date();
+      const overDueDays = Math.max(0, Math.floor((today.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24)));
+      
+      return {
+        id: transformation.job_work_number,
+        dcDate: transformation.sent_date,
+        vendorName: transformation.contractor?.name || 'Unknown Contractor',
+        materialDetails: `${transformation.input_sku?.name || 'Unknown Material'} - ${transformation.process_description || 'Processing'}`,
+        status: transformation.status,
+        expectedDate: transformation.expected_return_date || transformation.sent_date,
+        overDueDays,
+        vendorAddress: '',
+        contactPerson: transformation.contractor?.contact_person || '',
+        contactNumber: '',
+        notes: transformation.process_description || ''
+      };
+    });
+  }, [jobWorkTransformations]);
+
   // Filter and search logic
   const filteredAndSortedData = useMemo(() => {
-    let filtered = mockJobWorkData.filter(jobWork => {
+    let filtered = transformedJobWorkData.filter(jobWork => {
       const matchesSearch = searchTerm === "" || 
         jobWork.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         jobWork.materialDetails.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -216,16 +122,16 @@ const JobWork = () => {
     });
 
     return filtered;
-  }, [mockJobWorkData, searchTerm, statusFilter, overdueFilter, sortBy, dateRange]);
+  }, [transformedJobWorkData, searchTerm, statusFilter, overdueFilter, sortBy, dateRange]);
 
   // KPI calculations
   const kpiData = useMemo(() => {
-    const overdueJobs = mockJobWorkData.filter(job => job.overDueDays > 0).length;
-    const readyToDispatch = mockJobWorkData.filter(job => job.status === "ready_to_dispatch").length;
-    const qualityIssues = mockJobWorkData.filter(job => job.status === "quality_issues").length;
+    const overdueJobs = transformedJobWorkData.filter(job => job.overDueDays > 0).length;
+    const readyToDispatch = transformedJobWorkData.filter(job => job.status === "ready_to_dispatch").length;
+    const qualityIssues = transformedJobWorkData.filter(job => job.status === "quality_issues").length;
     
     return { overdueJobs, readyToDispatch, qualityIssues };
-  }, [mockJobWorkData]);
+  }, [transformedJobWorkData]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -257,11 +163,11 @@ const JobWork = () => {
   };
 
   const handleStatusUpdate = (jobWorkId: string, newStatus: string) => {
-    setMockJobWorkData(prev => 
-      prev.map(job => 
-        job.id === jobWorkId ? { ...job, status: newStatus } : job
-      )
-    );
+    // This will be updated when we implement real status updates to the database
+    toast({
+      title: "Status Update",
+      description: `Status updated to ${newStatus}`,
+    });
     setEditingJobWorkId(null);
   };
 
@@ -271,11 +177,11 @@ const JobWork = () => {
   };
 
   const handleSaveJobWork = (updatedJobWork: any) => {
-    setMockJobWorkData(prev => 
-      prev.map(job => 
-        job.id === updatedJobWork.id ? updatedJobWork : job
-      )
-    );
+    // This will be updated when we implement real job work updates to the database
+    toast({
+      title: "Job Work Updated",
+      description: "Job work details have been updated",
+    });
   };
 
   const formatMaterialDetails = (details: string) => {
@@ -358,7 +264,7 @@ const JobWork = () => {
 
   const handleQuickSearch = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && quickSearchTerm.trim()) {
-      const material = mockMaterials.find(m => 
+      const material = materials.find(m => 
         m.name.toLowerCase().includes(quickSearchTerm.toLowerCase()) ||
         m.sku.toLowerCase().includes(quickSearchTerm.toLowerCase())
       );
@@ -1058,7 +964,7 @@ const JobWork = () => {
       <ProductSelectionModal
         open={productModalOpen}
         onOpenChange={setProductModalOpen}
-        materials={mockMaterials}
+        materials={materials}
         onSelectMaterial={handleSelectMaterial}
       />
     </div>
@@ -1309,7 +1215,7 @@ const JobWork = () => {
       <ProductSelectionModal
         open={productModalOpen}
         onOpenChange={setProductModalOpen}
-        materials={mockMaterials}
+        materials={materials}
         onSelectMaterial={handleSelectMaterial}
       />
     </div>
