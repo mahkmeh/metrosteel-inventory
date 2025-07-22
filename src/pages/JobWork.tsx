@@ -36,12 +36,20 @@ const JobWork = () => {
     setIsEditModalOpen(true);
   };
 
+  const handleAddContractor = () => {
+    // TODO: Implement add contractor functionality
+  };
+
+  const handleEditContractor = (contractorId: string) => {
+    // TODO: Implement edit contractor functionality
+  };
+
   const renderActiveView = () => {
     switch (activeView) {
       case 'outward':
         return <OutwardTab onCreateOutward={handleCreateOutward} />;
       case 'contractors':
-        return <ContractorsTab />;
+        return <ContractorsTab onAddContractor={handleAddContractor} onEditContractor={handleEditContractor} />;
       case 'inward':
       default:
         return <InwardTab onCreateInward={handleCreateInward} />;
@@ -59,9 +67,13 @@ const JobWork = () => {
       />
       
       <JobWorkEditModal
-        open={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
         jobWork={selectedJobWork}
+        onSave={(updatedJobWork) => {
+          // TODO: Implement save functionality
+          setIsEditModalOpen(false);
+        }}
       />
     </div>
   );
