@@ -5,22 +5,12 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
   return useQuery({
     queryKey: ["materials-with-stock", searchTerm, sortField, sortDirection],
     queryFn: async () => {
-      // Base query for materials with inventory and purchase order data
+      console.log("Fetching materials with stock data...");
+      
+      // First, get materials with search filter
       let materialsQuery = supabase
         .from("materials")
-        .select(`
-          *,
-          inventory!inner (
-            quantity,
-            available_quantity,
-            unit_cost,
-            total_value,
-            location_id,
-            locations (
-              name
-            )
-          )
-        `)
+        .select("*")
         .eq("is_active", true);
 
       // Apply search filter
@@ -29,7 +19,43 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
       }
 
       const { data: materialsData, error: materialsError } = await materialsQuery;
-      if (materialsError) throw materialsError;
+      if (materialsError) {
+        console.error("Materials query error:", materialsError);
+        throw materialsError;
+      }
+
+      console.log("Materials fetched:", materialsData?.length);
+
+      if (!materialsData || materialsData.length === 0) {
+        return [];
+      }
+
+      // Get inventory data for all materials
+      const materialIds = materialsData.map(m => m.id);
+      const { data: inventoryData, error: inventoryError } = await supabase
+        .from("inventory")
+        .select(`
+          material_id,
+          location_id,
+          quantity,
+          available_quantity,
+          reserved_quantity,
+          unit_cost,
+          total_value,
+          quality_grade,
+          locations (
+            id,
+            name
+          )
+        `)
+        .in("material_id", materialIds);
+
+      if (inventoryError) {
+        console.error("Inventory query error:", inventoryError);
+        throw inventoryError;
+      }
+
+      console.log("Inventory data fetched:", inventoryData?.length);
 
       // Get pending purchase order quantities
       const { data: pendingOrders, error: ordersError } = await supabase
@@ -41,25 +67,35 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
             status
           )
         `)
-        .in("purchase_orders.status", ["pending", "approved", "ordered"]);
+        .in("purchase_orders.status", ["pending", "approved", "ordered"])
+        .in("material_id", materialIds);
 
-      if (ordersError) throw ordersError;
+      if (ordersError) {
+        console.error("Purchase orders query error:", ordersError);
+        // Don't throw error for pending orders, just log and continue
+        console.warn("Continuing without pending orders data");
+      }
+
+      console.log("Pending orders fetched:", pendingOrders?.length || 0);
 
       // Process and combine data
-      const materialsWithStock = materialsData?.map(material => {
+      const materialsWithStock = materialsData.map(material => {
+        // Get inventory for this material
+        const materialInventory = inventoryData?.filter(inv => inv.material_id === material.id) || [];
+
         // Calculate current stock across all locations
-        const currentStock = material.inventory?.reduce((total: number, inv: any) => {
-          return total + (inv.available_quantity || 0);
-        }, 0) || 0;
+        const currentStock = materialInventory.reduce((total, inv) => {
+          return total + (inv.available_quantity || inv.quantity - (inv.reserved_quantity || 0));
+        }, 0);
 
         // Calculate total inventory value and weighted average cost
-        const totalInventoryValue = material.inventory?.reduce((total: number, inv: any) => {
+        const totalInventoryValue = materialInventory.reduce((total, inv) => {
           return total + (inv.total_value || 0);
-        }, 0) || 0;
+        }, 0);
 
-        const totalQuantity = material.inventory?.reduce((total: number, inv: any) => {
+        const totalQuantity = materialInventory.reduce((total, inv) => {
           return total + (inv.quantity || 0);
-        }, 0) || 0;
+        }, 0);
 
         const weightedAvgCost = totalQuantity > 0 ? totalInventoryValue / totalQuantity : 0;
 
@@ -83,6 +119,14 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
           statusColor = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400";
         }
 
+        // Transform inventory data for locations
+        const locations = materialInventory.map(inv => ({
+          id: inv.location_id,
+          name: inv.locations?.name || "Unknown Location",
+          quantity: inv.quantity || 0,
+          available: inv.available_quantity || (inv.quantity - (inv.reserved_quantity || 0))
+        }));
+
         return {
           ...material,
           currentStock,
@@ -94,9 +138,12 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
           weightedAvgCost,
           totalQuantity,
           // Keep inventory details for drill-down
-          inventoryDetails: material.inventory
+          inventoryDetails: materialInventory,
+          locations
         };
-      }) || [];
+      });
+
+      console.log("Materials with stock processed:", materialsWithStock.length);
 
       // Apply sorting
       materialsWithStock.sort((a, b) => {

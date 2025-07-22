@@ -9,8 +9,8 @@ interface InventoryInfo {
   reservedQuantity: number;
   totalValue: number;
   weightedAvgCost: number;
-  batchCount: number;
-  totalBatchWeight: number;
+  batchCount?: number;
+  totalBatchWeight?: number;
   locations: {
     id: string;
     name: string;
@@ -21,7 +21,7 @@ interface InventoryInfo {
 
 interface InventoryInfoDisplayProps {
   material: any;
-  inventoryInfo: InventoryInfo;
+  inventoryInfo?: InventoryInfo;
 }
 
 export const InventoryInfoDisplay = ({ material, inventoryInfo }: InventoryInfoDisplayProps) => {
@@ -32,10 +32,20 @@ export const InventoryInfoDisplay = ({ material, inventoryInfo }: InventoryInfoD
     }).format(amount);
   };
 
+  // Use data from material if inventoryInfo is not provided
+  const totalQuantity = inventoryInfo?.totalQuantity || material.totalQuantity || 0;
+  const availableQuantity = inventoryInfo?.availableQuantity || material.currentStock || 0;
+  const reservedQuantity = inventoryInfo?.reservedQuantity || (totalQuantity - availableQuantity);
+  const totalValue = inventoryInfo?.totalValue || material.totalInventoryValue || 0;
+  const weightedAvgCost = inventoryInfo?.weightedAvgCost || material.weightedAvgCost || 0;
+  const locations = inventoryInfo?.locations || material.locations || [];
+  const batchCount = inventoryInfo?.batchCount || 0;
+  const totalBatchWeight = inventoryInfo?.totalBatchWeight || 0;
+
   const getStockStatus = () => {
-    if (inventoryInfo.availableQuantity === 0) {
+    if (availableQuantity === 0) {
       return { status: "out-of-stock", label: "Out of Stock", color: "bg-destructive/10 text-destructive" };
-    } else if (inventoryInfo.availableQuantity < 10) {
+    } else if (availableQuantity < 10) {
       return { status: "low-stock", label: "Low Stock", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400" };
     } else {
       return { status: "in-stock", label: "In Stock", color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400" };
@@ -61,19 +71,19 @@ export const InventoryInfoDisplay = ({ material, inventoryInfo }: InventoryInfoD
         {/* Stock Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">{inventoryInfo.totalQuantity}</div>
+            <div className="text-2xl font-bold text-primary">{totalQuantity}</div>
             <div className="text-xs text-muted-foreground">Total Stock</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{inventoryInfo.availableQuantity}</div>
+            <div className="text-2xl font-bold text-green-600">{availableQuantity}</div>
             <div className="text-xs text-muted-foreground">Available</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">{inventoryInfo.reservedQuantity}</div>
+            <div className="text-2xl font-bold text-orange-600">{reservedQuantity}</div>
             <div className="text-xs text-muted-foreground">Reserved</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{inventoryInfo.batchCount}</div>
+            <div className="text-2xl font-bold text-blue-600">{batchCount}</div>
             <div className="text-xs text-muted-foreground">Batches</div>
           </div>
         </div>
@@ -85,7 +95,7 @@ export const InventoryInfoDisplay = ({ material, inventoryInfo }: InventoryInfoD
             <div>
               <div className="text-sm font-medium">WAC</div>
               <div className="text-xs text-muted-foreground">
-                {formatCurrency(inventoryInfo.weightedAvgCost)}
+                {formatCurrency(weightedAvgCost)}
               </div>
             </div>
           </div>
@@ -94,21 +104,21 @@ export const InventoryInfoDisplay = ({ material, inventoryInfo }: InventoryInfoD
             <div>
               <div className="text-sm font-medium">Total Value</div>
               <div className="text-xs text-muted-foreground">
-                {formatCurrency(inventoryInfo.totalValue)}
+                {formatCurrency(totalValue)}
               </div>
             </div>
           </div>
         </div>
 
         {/* Location Breakdown */}
-        {inventoryInfo.locations.length > 0 && (
+        {locations.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <MapPin className="h-4 w-4" />
               Locations
             </div>
             <div className="grid grid-cols-1 gap-2">
-              {inventoryInfo.locations.map((location) => (
+              {locations.map((location) => (
                 <div key={location.id} className="flex justify-between items-center p-2 bg-muted/20 rounded">
                   <span className="text-sm">{location.name}</span>
                   <div className="text-sm">
@@ -122,13 +132,13 @@ export const InventoryInfoDisplay = ({ material, inventoryInfo }: InventoryInfoD
         )}
 
         {/* Batch Weight Information */}
-        {inventoryInfo.totalBatchWeight > 0 && (
+        {totalBatchWeight > 0 && (
           <div className="flex items-center justify-between p-2 bg-muted/20 rounded">
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Total Batch Weight</span>
             </div>
-            <span className="text-sm font-semibold">{inventoryInfo.totalBatchWeight} KG</span>
+            <span className="text-sm font-semibold">{totalBatchWeight} KG</span>
           </div>
         )}
       </CardContent>
