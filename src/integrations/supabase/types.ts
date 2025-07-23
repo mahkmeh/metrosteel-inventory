@@ -1042,6 +1042,96 @@ export type Database = {
           },
         ]
       }
+      receivables: {
+        Row: {
+          created_at: string
+          customer_id: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          original_amount: number
+          outstanding_amount: number
+          paid_amount: number
+          sales_invoice_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          original_amount?: number
+          outstanding_amount?: number
+          paid_amount?: number
+          sales_invoice_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          original_amount?: number
+          outstanding_amount?: number
+          paid_amount?: number
+          sales_invoice_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_invoices: {
+        Row: {
+          created_at: string
+          customer_id: string
+          due_date: string | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          notes: string | null
+          sales_order_id: string
+          status: string
+          subtotal_amount: number
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          due_date?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number: string
+          notes?: string | null
+          sales_order_id: string
+          status?: string
+          subtotal_amount?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          due_date?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          notes?: string | null
+          sales_order_id?: string
+          status?: string
+          subtotal_amount?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales_order_items: {
         Row: {
           created_at: string
@@ -1137,6 +1227,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sales_returns: {
+        Row: {
+          created_at: string
+          credit_note_date: string | null
+          credit_note_number: string | null
+          customer_id: string
+          id: string
+          notes: string | null
+          return_date: string
+          return_number: string
+          return_reason: string | null
+          sales_invoice_id: string
+          sales_order_id: string
+          status: string
+          total_return_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_note_date?: string | null
+          credit_note_number?: string | null
+          customer_id: string
+          id?: string
+          notes?: string | null
+          return_date?: string
+          return_number: string
+          return_reason?: string | null
+          sales_invoice_id: string
+          sales_order_id: string
+          status?: string
+          total_return_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_note_date?: string | null
+          credit_note_number?: string | null
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          return_date?: string
+          return_number?: string
+          return_reason?: string | null
+          sales_invoice_id?: string
+          sales_order_id?: string
+          status?: string
+          total_return_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
