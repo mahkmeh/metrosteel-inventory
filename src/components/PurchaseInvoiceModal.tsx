@@ -36,7 +36,7 @@ import * as z from "zod";
 const invoiceSchema = z.object({
   invoice_number: z.string().min(1, "Invoice number is required"),
   supplier_id: z.string().min(1, "Supplier is required"),
-  purchase_order_id: z.string().optional(),
+  purchase_order_id: z.string().min(1, "Purchase order is required"),
   invoice_date: z.string().min(1, "Invoice date is required"),
   due_date: z.string().optional(),
   subtotal_amount: z.coerce.number().min(0, "Amount must be positive"),
