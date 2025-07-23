@@ -396,7 +396,7 @@ export default function Receivables() {
                     <SelectContent>
                       {filteredSalesInvoices?.map((invoice) => (
                         <SelectItem key={invoice.id} value={invoice.id}>
-                          {invoice.invoice_number} - ₹{invoice.total_amount.toLocaleString()}
+                          {invoice.invoice_number} - ₹{(invoice.total_amount || 0).toLocaleString()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -605,9 +605,9 @@ export default function Receivables() {
                   <TableRow key={receivable.id}>
                     <TableCell className="font-medium">{receivable.customers?.name}</TableCell>
                     <TableCell>{receivable.sales_invoices?.invoice_number}</TableCell>
-                    <TableCell>₹{receivable.original_amount.toLocaleString()}</TableCell>
-                    <TableCell>₹{receivable.paid_amount.toLocaleString()}</TableCell>
-                    <TableCell className="font-semibold">₹{receivable.outstanding_amount.toLocaleString()}</TableCell>
+                    <TableCell>₹{(receivable.original_amount || 0).toLocaleString()}</TableCell>
+                    <TableCell>₹{(receivable.paid_amount || 0).toLocaleString()}</TableCell>
+                    <TableCell className="font-semibold">₹{(receivable.outstanding_amount || 0).toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
                         {receivable.due_date ? format(new Date(receivable.due_date), "PPP") : "-"}
@@ -659,7 +659,7 @@ export default function Receivables() {
           <form onSubmit={handlePaymentSubmit} className="space-y-4">
             <div>
               <Label>Customer: {selectedReceivable?.customers?.name}</Label>
-              <Label>Outstanding: ₹{selectedReceivable?.outstanding_amount.toLocaleString()}</Label>
+              <Label>Outstanding: ₹{(selectedReceivable?.outstanding_amount || 0).toLocaleString()}</Label>
             </div>
             
             <div>
