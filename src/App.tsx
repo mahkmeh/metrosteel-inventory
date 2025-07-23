@@ -34,7 +34,7 @@ function App() {
             <Route path="purchase/invoice" element={<PurchaseInvoice />} />
             <Route path="purchase/returns" element={<PurchaseReturn />} />
             <Route path="purchase/payables" element={<Payables />} />
-            <Route path="job-work" element={<JobWork />} />
+            <Route path="jobwork/*" element={<JobWork />} />
             <Route path="vendors" element={<Vendors />} />
             <Route path="sales" element={<Sales />} />
           </Route>
