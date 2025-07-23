@@ -91,7 +91,7 @@ const Sales = () => {
       const { data, error } = await supabase
         .from("quotations")
         .select("id, quotation_number, customer_id")
-        .eq("status", "approved")
+        .eq("status", "won")
         .order("quotation_number");
 
       if (error) throw error;
