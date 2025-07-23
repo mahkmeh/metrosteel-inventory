@@ -1,4 +1,3 @@
-
 import { Package, Warehouse, Users, FileText, ShoppingCart, BarChart3, Moon, Sun, Monitor, Truck, Wrench, Receipt, Building, RotateCcw, CreditCard, ChevronDown } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useTheme } from "@/hooks/use-theme"
@@ -35,8 +34,8 @@ const navigation = [
 const purchaseNavigation = [
   { title: "Purchase Order", url: "/purchase", icon: Truck },
   { title: "Purchase Invoice", url: "/purchase/invoice", icon: Receipt },
-  { title: "Vendors", url: "/purchase/vendors", icon: Building },
-  { title: "Purchase Return", url: "/purchase/return", icon: RotateCcw },
+  { title: "Vendors", url: "/vendors", icon: Building },
+  { title: "Purchase Return", url: "/purchase/returns", icon: RotateCcw },
   { title: "Payables", url: "/purchase/payables", icon: CreditCard },
 ]
 
