@@ -391,6 +391,57 @@ export type Database = {
           },
         ]
       }
+      lead_activities: {
+        Row: {
+          activity_date: string
+          activity_description: string | null
+          activity_title: string
+          activity_type: string
+          created_at: string
+          customer_id: string
+          id: string
+          quotation_id: string | null
+          reference_id: string | null
+        }
+        Insert: {
+          activity_date?: string
+          activity_description?: string | null
+          activity_title: string
+          activity_type: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          quotation_id?: string | null
+          reference_id?: string | null
+        }
+        Update: {
+          activity_date?: string
+          activity_description?: string | null
+          activity_title?: string
+          activity_type?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          quotation_id?: string | null
+          reference_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_activities_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           address: string | null
@@ -552,6 +603,66 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phone_call_logs: {
+        Row: {
+          call_date: string
+          call_duration: number | null
+          call_notes: string | null
+          call_outcome: string | null
+          call_type: string
+          created_at: string
+          customer_id: string
+          follow_up_date: string | null
+          follow_up_required: boolean
+          id: string
+          quotation_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          call_date?: string
+          call_duration?: number | null
+          call_notes?: string | null
+          call_outcome?: string | null
+          call_type: string
+          created_at?: string
+          customer_id: string
+          follow_up_date?: string | null
+          follow_up_required?: boolean
+          id?: string
+          quotation_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          call_date?: string
+          call_duration?: number | null
+          call_notes?: string | null
+          call_outcome?: string | null
+          call_type?: string
+          created_at?: string
+          customer_id?: string
+          follow_up_date?: string | null
+          follow_up_required?: boolean
+          id?: string
+          quotation_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_call_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_call_logs_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
             referencedColumns: ["id"]
           },
         ]
@@ -1404,6 +1515,63 @@ export type Database = {
             columns: ["transformation_id"]
             isOneToOne: false
             referencedRelation: "job_work_transformations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          attachment_type: string | null
+          attachment_url: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          is_read: boolean
+          message_content: string
+          message_timestamp: string
+          message_type: string
+          quotation_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_read?: boolean
+          message_content: string
+          message_timestamp?: string
+          message_type: string
+          quotation_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_read?: boolean
+          message_content?: string
+          message_timestamp?: string
+          message_type?: string
+          quotation_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
             referencedColumns: ["id"]
           },
         ]

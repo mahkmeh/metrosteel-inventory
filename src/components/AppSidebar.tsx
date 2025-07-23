@@ -26,7 +26,7 @@ import { useState } from "react"
 const navigation = [
   { title: "Dashboard", url: "/", icon: BarChart3 },
   { title: "Materials", url: "/materials", icon: Package },
-  { title: "Quotations", url: "/quotations", icon: FileText },
+  { title: "Leads", url: "/leads", icon: Users },
 ]
 
 const salesNavigation = [

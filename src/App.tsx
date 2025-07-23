@@ -12,7 +12,10 @@ import Dashboard from "./pages/Dashboard";
 import Materials from "./pages/Materials";
 import MaterialDetails from "./pages/MaterialDetails";
 import Customers from "./pages/Customers";
+import Leads from "./pages/Leads";
 import Quotations from "./pages/Quotations";
+import WhatsAppChat from "./pages/WhatsAppChat";
+import PhoneCallLog from "./pages/PhoneCallLog";
 import SalesOrders from "./pages/Sales";
 import SalesInvoice from "./pages/SalesInvoice";
 import SalesReturn from "./pages/SalesReturn";
@@ -44,7 +47,11 @@ const App = () => (
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="materials" element={<Materials />} />
               <Route path="materials/:id" element={<MaterialDetails />} />
-              <Route path="quotations" element={<Quotations />} />
+              <Route path="leads" element={<Leads />} />
+              <Route path="leads/quotations" element={<Quotations />} />
+              <Route path="leads/whatsapp" element={<WhatsAppChat />} />
+              <Route path="leads/calls" element={<PhoneCallLog />} />
+              <Route path="quotations" element={<Navigate to="/leads/quotations" replace />} />
               <Route path="sales" element={<Navigate to="/sales/orders" replace />} />
               <Route path="sales/orders" element={<SalesOrders />} />
               <Route path="sales/invoice" element={<SalesInvoice />} />
