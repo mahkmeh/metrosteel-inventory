@@ -40,7 +40,7 @@ const Vendors = () => {
           </h1>
           <p className="text-muted-foreground">Manage supplier relationships and vendor information</p>
         </div>
-        <Button disabled>
+        <Button>
           <Plus className="h-4 w-4 mr-2" />
           Add Vendor
         </Button>
