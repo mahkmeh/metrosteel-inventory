@@ -28,8 +28,8 @@ interface Receivable {
   notes?: string;
   created_at: string;
   updated_at: string;
-  customers?: { name: string };
-  sales_invoices?: { invoice_number: string };
+  customers?: { name: string } | null;
+  sales_invoices?: { invoice_number: string } | null;
 }
 
 interface Customer {
@@ -86,16 +86,8 @@ export default function Receivables() {
     queryFn: async () => {
       let query = supabase
         .from("receivables")
-        .select(`
-          *,
-          customers(name),
-          sales_invoices(invoice_number)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
-
-      if (searchTerm) {
-        query = query.ilike("customers.name", `%${searchTerm}%`);
-      }
 
       if (statusFilter !== "all") {
         query = query.eq("status", statusFilter);
@@ -103,7 +95,43 @@ export default function Receivables() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+
+      // Fetch customers and sales_invoices separately
+      const customerIds = [...new Set(data?.map(r => r.customer_id))];
+      const invoiceIds = [...new Set(data?.map(r => r.sales_invoice_id))];
+
+      const [customersData, invoicesData] = await Promise.all([
+        customerIds.length > 0 ? supabase
+          .from("customers")
+          .select("id, name")
+          .in("id", customerIds) : Promise.resolve({ data: [] }),
+        invoiceIds.length > 0 ? supabase
+          .from("sales_invoices")
+          .select("id, invoice_number")
+          .in("id", invoiceIds) : Promise.resolve({ data: [] })
+      ]);
+
+      // Combine the data with proper typing
+      const customersMap = new Map<string, { id: string; name: string }>();
+      const invoicesMap = new Map<string, { id: string; invoice_number: string }>();
+      
+      customersData.data?.forEach(c => customersMap.set(c.id, c));
+      invoicesData.data?.forEach(i => invoicesMap.set(i.id, i));
+
+      const enrichedData = data?.map(receivable => ({
+        ...receivable,
+        customers: customersMap.get(receivable.customer_id) || null,
+        sales_invoices: invoicesMap.get(receivable.sales_invoice_id) || null
+      })) || [];
+
+      // Apply search filter if provided
+      if (searchTerm) {
+        return enrichedData.filter(r => 
+          r.customers?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      return enrichedData;
     },
   });
 
