@@ -13,7 +13,10 @@ import Materials from "./pages/Materials";
 import MaterialDetails from "./pages/MaterialDetails";
 import Customers from "./pages/Customers";
 import Quotations from "./pages/Quotations";
-import Sales from "./pages/Sales";
+import SalesOrders from "./pages/Sales";
+import SalesInvoice from "./pages/SalesInvoice";
+import SalesReturn from "./pages/SalesReturn";
+import Receivables from "./pages/Receivables";
 import Purchase from "./pages/Purchase";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import PurchaseInvoice from "./pages/PurchaseInvoice";
@@ -41,9 +44,14 @@ const App = () => (
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="materials" element={<Materials />} />
               <Route path="materials/:id" element={<MaterialDetails />} />
-              <Route path="customers" element={<Customers />} />
               <Route path="quotations" element={<Quotations />} />
-              <Route path="sales" element={<Sales />} />
+              <Route path="sales" element={<Navigate to="/sales/orders" replace />} />
+              <Route path="sales/orders" element={<SalesOrders />} />
+              <Route path="sales/invoice" element={<SalesInvoice />} />
+              <Route path="sales/customers" element={<Customers />} />
+              <Route path="sales/returns" element={<SalesReturn />} />
+              <Route path="sales/receivables" element={<Receivables />} />
+              <Route path="customers" element={<Navigate to="/sales/customers" replace />} />
               <Route path="purchase" element={<Purchase />} />
               <Route path="purchase/orders" element={<PurchaseOrders />} />
               <Route path="purchase/invoice" element={<PurchaseInvoice />} />

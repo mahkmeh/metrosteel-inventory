@@ -26,9 +26,15 @@ import { useState } from "react"
 const navigation = [
   { title: "Dashboard", url: "/", icon: BarChart3 },
   { title: "Materials", url: "/materials", icon: Package },
-  { title: "Customers", url: "/customers", icon: Users },
   { title: "Quotations", url: "/quotations", icon: FileText },
-  { title: "Sales Order", url: "/sales", icon: ShoppingCart },
+]
+
+const salesNavigation = [
+  { title: "Sales Order", url: "/sales/orders", icon: ShoppingCart },
+  { title: "Sales Invoice", url: "/sales/invoice", icon: Receipt },
+  { title: "Customers", url: "/sales/customers", icon: Users },
+  { title: "Sales Return", url: "/sales/returns", icon: RotateCcw },
+  { title: "Receivables", url: "/sales/receivables", icon: CreditCard },
 ]
 
 const purchaseNavigation = [
@@ -49,6 +55,9 @@ export function AppSidebar() {
   const { state } = useSidebar()
   const location = useLocation()
   const { theme, setTheme } = useTheme()
+  const [salesExpanded, setSalesExpanded] = useState(
+    location.pathname.startsWith("/sales")
+  )
   const [purchaseExpanded, setPurchaseExpanded] = useState(
     location.pathname.startsWith("/purchase")
   )
@@ -57,6 +66,7 @@ export function AppSidebar() {
   )
   
   const isActive = (path: string) => location.pathname === path
+  const isSalesActive = location.pathname.startsWith("/sales")
   const isPurchaseActive = location.pathname.startsWith("/purchase")
   const isJobWorkActive = location.pathname.startsWith("/jobwork")
   const collapsed = state === "collapsed"
@@ -112,6 +122,40 @@ export function AppSidebar() {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Sales Module */}
+        <SidebarGroup>
+          <Collapsible 
+            open={salesExpanded} 
+            onOpenChange={setSalesExpanded}
+            className="w-full"
+          >
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md">
+                <span>SALES</span>
+                {!collapsed && (
+                  <ChevronDown className={`h-4 w-4 transition-transform ${salesExpanded ? 'rotate-180' : ''}`} />
+                )}
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {salesNavigation.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={isActive(item.url)} className="pl-6">
+                        <NavLink to={item.url} end>
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
         </SidebarGroup>
 
         {/* Job Work Module */}
