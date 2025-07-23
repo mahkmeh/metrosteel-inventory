@@ -1,79 +1,75 @@
-import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { InwardTab } from "@/components/JobWork/InwardTab";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Plus, ArrowUp, ArrowDown, Users } from "lucide-react";
 import { OutwardTab } from "@/components/JobWork/OutwardTab";
+import { InwardTab } from "@/components/JobWork/InwardTab";
 import { ContractorsTab } from "@/components/JobWork/ContractorsTab";
 import { JobWorkOutwardModal } from "@/components/JobWorkOutwardModal";
-import { JobWorkEditModal } from "@/components/JobWorkEditModal";
+import { JobWorkInwardModal } from "@/components/JobWorkInwardModal";
 
 const JobWork = () => {
-  const location = useLocation();
-  const [isOutwardModalOpen, setIsOutwardModalOpen] = useState(false);
-  const [isInwardModalOpen, setIsInwardModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedJobWork, setSelectedJobWork] = useState<any>(null);
-
-  // Determine active view based on URL
-  const getActiveView = () => {
-    const path = location.pathname;
-    if (path.includes('/outward')) return 'outward';
-    if (path.includes('/contractors')) return 'contractors';
-    return 'inward'; // default to inward
-  };
-
-  const activeView = getActiveView();
-
-  const handleCreateOutward = () => {
-    setIsOutwardModalOpen(true);
-  };
-
-  const handleCreateInward = () => {
-    setIsInwardModalOpen(true);
-  };
-
-  const handleEditJobWork = (jobWork: any) => {
-    setSelectedJobWork(jobWork);
-    setIsEditModalOpen(true);
-  };
-
-  const handleAddContractor = () => {
-    // TODO: Implement add contractor functionality
-  };
-
-  const handleEditContractor = (contractorId: string) => {
-    // TODO: Implement edit contractor functionality
-  };
-
-  const renderActiveView = () => {
-    switch (activeView) {
-      case 'outward':
-        return <OutwardTab onCreateOutward={handleCreateOutward} />;
-      case 'contractors':
-        return <ContractorsTab onAddContractor={handleAddContractor} onEditContractor={handleEditContractor} />;
-      case 'inward':
-      default:
-        return <InwardTab onCreateInward={handleCreateInward} />;
-    }
-  };
+  const [showOutwardModal, setShowOutwardModal] = useState(false);
+  const [showInwardModal, setShowInwardModal] = useState(false);
 
   return (
-    <div className="space-y-6">
-      {renderActiveView()}
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Job Work Management</h1>
+          <p className="text-muted-foreground">Manage job work transformations and contractor relationships</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowOutwardModal(true)}>
+            <ArrowUp className="h-4 w-4 mr-2" />
+            Create OUTWARD ENTRY
+          </Button>
+          <Button variant="outline" onClick={() => setShowInwardModal(true)}>
+            <ArrowDown className="h-4 w-4 mr-2" />
+            Create INWARD ENTRY
+          </Button>
+        </div>
+      </div>
 
-      {/* Modals */}
-      <JobWorkOutwardModal 
-        open={isOutwardModalOpen}
-        onOpenChange={setIsOutwardModalOpen}
+      <Tabs defaultValue="outward" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="outward">
+            <ArrowUp className="h-4 w-4 mr-2" />
+            Outward
+          </TabsTrigger>
+          <TabsTrigger value="inward">
+            <ArrowDown className="h-4 w-4 mr-2" />
+            Inward
+          </TabsTrigger>
+          <TabsTrigger value="contractors">
+            <Users className="h-4 w-4 mr-2" />
+            Contractors
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="outward">
+          <OutwardTab />
+        </TabsContent>
+
+        <TabsContent value="inward">
+          <InwardTab />
+        </TabsContent>
+
+        <TabsContent value="contractors">
+          <ContractorsTab />
+        </TabsContent>
+      </Tabs>
+
+      <JobWorkOutwardModal
+        open={showOutwardModal}
+        onOpenChange={setShowOutwardModal}
       />
-      
-      <JobWorkEditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        jobWork={selectedJobWork}
-        onSave={(updatedJobWork) => {
-          // TODO: Implement save functionality
-          setIsEditModalOpen(false);
-        }}
+
+      <JobWorkInwardModal
+        open={showInwardModal}
+        onOpenChange={setShowInwardModal}
       />
     </div>
   );

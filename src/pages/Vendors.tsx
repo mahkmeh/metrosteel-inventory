@@ -1,15 +1,17 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Building, Plus, Search, Phone, Mail, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { VendorModal } from "@/components/VendorModal";
 
 const Vendors = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showVendorModal, setShowVendorModal] = useState(false);
 
   const { data: suppliers = [], isLoading } = useQuery({
     queryKey: ["suppliers", searchTerm],
@@ -40,7 +42,7 @@ const Vendors = () => {
           </h1>
           <p className="text-muted-foreground">Manage supplier relationships and vendor information</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowVendorModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Vendor
         </Button>
@@ -123,6 +125,11 @@ const Vendors = () => {
           </CardContent>
         </Card>
       )}
+
+      <VendorModal
+        open={showVendorModal}
+        onOpenChange={setShowVendorModal}
+      />
     </div>
   );
 };

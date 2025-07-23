@@ -3,48 +3,58 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, Search, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { format } from "date-fns";
+import { FileText, Plus, Search, Eye } from "lucide-react";
 import { PurchaseInvoiceModal } from "@/components/PurchaseInvoiceModal";
+import { PurchaseInvoiceDetailsModal } from "@/components/PurchaseInvoiceDetailsModal";
 
 const PurchaseInvoice = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
 
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ["purchase-invoices"],
+    queryKey: ["purchase-invoices", searchTerm],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("purchase_invoices")
         .select(`
           *,
-          suppliers(name),
-          purchase_orders(po_number)
+          supplier:suppliers(name),
+          purchase_order:purchase_orders(po_number)
         `)
         .order("created_at", { ascending: false });
-      
+
+      if (searchTerm) {
+        query = query.or(`invoice_number.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      return data;
     }
   });
 
-  const filteredInvoices = invoices.filter((invoice: any) =>
-    invoice.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    invoice.suppliers?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    invoice.purchase_orders?.po_number?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "received": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "paid": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case "paid":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "overdue":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const handleViewInvoice = (invoice: any) => {
+    setSelectedInvoice(invoice);
+    setShowDetailsModal(true);
   };
 
   return (
@@ -53,13 +63,13 @@ const PurchaseInvoice = () => {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <FileText className="h-8 w-8" />
-            Purchase Invoice
+            Purchase Invoices
           </h1>
-          <p className="text-muted-foreground">Manage supplier invoices and payments</p>
+          <p className="text-muted-foreground">Manage purchase invoices and payments</p>
         </div>
-        <Button onClick={() => setShowInvoiceModal(true)}>
+        <Button onClick={() => setShowModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Record Invoice
+          Add Invoice
         </Button>
       </div>
 
@@ -78,18 +88,11 @@ const PurchaseInvoice = () => {
       <Card>
         <CardHeader>
           <CardTitle>Purchase Invoices</CardTitle>
-          <CardDescription>
-            Track and manage supplier invoices with payment processing
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading invoices...</div>
-          ) : filteredInvoices.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">No Invoices Found</h3>
-              <p className="text-sm">No purchase invoices match your search criteria.</p>
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
             <Table>
@@ -97,7 +100,6 @@ const PurchaseInvoice = () => {
                 <TableRow>
                   <TableHead>Invoice Number</TableHead>
                   <TableHead>Supplier</TableHead>
-                  <TableHead>PO Number</TableHead>
                   <TableHead>Invoice Date</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Amount</TableHead>
@@ -106,21 +108,24 @@ const PurchaseInvoice = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInvoices.map((invoice: any) => (
+                {invoices.map((invoice) => (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                    <TableCell>{invoice.suppliers?.name}</TableCell>
-                    <TableCell>{invoice.purchase_orders?.po_number}</TableCell>
-                    <TableCell>{format(new Date(invoice.invoice_date), "dd/MM/yyyy")}</TableCell>
-                    <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "dd/MM/yyyy") : "-"}</TableCell>
-                    <TableCell>₹{invoice.total_amount?.toLocaleString()}</TableCell>
+                    <TableCell>{invoice.supplier?.name || "N/A"}</TableCell>
+                    <TableCell>{invoice.invoice_date}</TableCell>
+                    <TableCell>{invoice.due_date || "N/A"}</TableCell>
+                    <TableCell>₹{invoice.total_amount?.toFixed(2) || "0.00"}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(invoice.status)}>
                         {invoice.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewInvoice(invoice)}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -129,12 +134,28 @@ const PurchaseInvoice = () => {
               </TableBody>
             </Table>
           )}
+
+          {invoices.length === 0 && !isLoading && (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No Purchase Invoices Found</h3>
+              <p className="text-sm text-muted-foreground">
+                {searchTerm ? "No invoices match your search criteria." : "Start by adding your first invoice."}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <PurchaseInvoiceModal 
-        open={showInvoiceModal} 
-        onOpenChange={setShowInvoiceModal} 
+      <PurchaseInvoiceModal
+        open={showModal}
+        onOpenChange={setShowModal}
+      />
+
+      <PurchaseInvoiceDetailsModal
+        open={showDetailsModal}
+        onOpenChange={setShowDetailsModal}
+        invoice={selectedInvoice}
       />
     </div>
   );
