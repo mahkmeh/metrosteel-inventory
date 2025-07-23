@@ -1,4 +1,4 @@
-import { Package, Warehouse, Users, FileText, ShoppingCart, BarChart3, Moon, Sun, Monitor, Truck, Wrench, Receipt, Building, RotateCcw, CreditCard, ChevronDown } from "lucide-react"
+import { Package, Warehouse, Users, FileText, ShoppingCart, BarChart3, Moon, Sun, Monitor, Truck, Wrench, Receipt, Building, RotateCcw, CreditCard, ChevronDown, MessageCircle, Phone } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useTheme } from "@/hooks/use-theme"
 import {
@@ -26,7 +26,12 @@ import { useState } from "react"
 const navigation = [
   { title: "Dashboard", url: "/", icon: BarChart3 },
   { title: "Materials", url: "/materials", icon: Package },
-  { title: "Leads", url: "/leads", icon: Users },
+]
+
+const leadsNavigation = [
+  { title: "Quotations", url: "/leads/quotations", icon: FileText },
+  { title: "WhatsApp Chat", url: "/leads/whatsapp", icon: MessageCircle },
+  { title: "Phone Calls", url: "/leads/calls", icon: Phone },
 ]
 
 const salesNavigation = [
@@ -58,6 +63,9 @@ export function AppSidebar() {
   const [salesExpanded, setSalesExpanded] = useState(
     location.pathname.startsWith("/sales")
   )
+  const [leadsExpanded, setLeadsExpanded] = useState(
+    location.pathname.startsWith("/leads")
+  )
   const [purchaseExpanded, setPurchaseExpanded] = useState(
     location.pathname.startsWith("/purchase")
   )
@@ -67,6 +75,7 @@ export function AppSidebar() {
   
   const isActive = (path: string) => location.pathname === path
   const isSalesActive = location.pathname.startsWith("/sales")
+  const isLeadsActive = location.pathname.startsWith("/leads")
   const isPurchaseActive = location.pathname.startsWith("/purchase")
   const isJobWorkActive = location.pathname.startsWith("/jobwork")
   const collapsed = state === "collapsed"
@@ -122,6 +131,40 @@ export function AppSidebar() {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Leads Module */}
+        <SidebarGroup>
+          <Collapsible 
+            open={leadsExpanded} 
+            onOpenChange={setLeadsExpanded}
+            className="w-full"
+          >
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md">
+                <span>LEADS</span>
+                {!collapsed && (
+                  <ChevronDown className={`h-4 w-4 transition-transform ${leadsExpanded ? 'rotate-180' : ''}`} />
+                )}
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {leadsNavigation.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={isActive(item.url)} className="pl-6">
+                        <NavLink to={item.url} end>
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
         </SidebarGroup>
 
         {/* Sales Module */}

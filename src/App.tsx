@@ -12,7 +12,6 @@ import Dashboard from "./pages/Dashboard";
 import Materials from "./pages/Materials";
 import MaterialDetails from "./pages/MaterialDetails";
 import Customers from "./pages/Customers";
-import Leads from "./pages/Leads";
 import Quotations from "./pages/Quotations";
 import WhatsAppChat from "./pages/WhatsAppChat";
 import PhoneCallLog from "./pages/PhoneCallLog";
@@ -47,7 +46,7 @@ const App = () => (
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="materials" element={<Materials />} />
               <Route path="materials/:id" element={<MaterialDetails />} />
-              <Route path="leads" element={<Leads />} />
+              <Route path="leads" element={<Navigate to="/leads/quotations" replace />} />
               <Route path="leads/quotations" element={<Quotations />} />
               <Route path="leads/whatsapp" element={<WhatsAppChat />} />
               <Route path="leads/calls" element={<PhoneCallLog />} />
