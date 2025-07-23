@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateJobWorkTransformation } from "@/hooks/useJobWorkTransformations";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface JobWorkOutwardModalProps {
   open: boolean;
@@ -18,6 +21,8 @@ interface JobWorkOutwardModalProps {
 }
 
 export const JobWorkOutwardModal = ({ open, onOpenChange }: JobWorkOutwardModalProps) => {
+  console.log("JobWorkOutwardModal rendered, open:", open);
+  
   const [formData, setFormData] = useState({
     contractor_id: "",
     input_sku_id: "",
@@ -31,77 +36,120 @@ export const JobWorkOutwardModal = ({ open, onOpenChange }: JobWorkOutwardModalP
   });
 
   const [selectedBatches, setSelectedBatches] = useState<any[]>([]);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
   const { toast } = useToast();
   
   const createTransformation = useCreateJobWorkTransformation();
 
-  // Fetch contractors (suppliers)
-  const { data: contractors = [] } = useQuery({
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      console.log("Modal opened, resetting form");
+      setFormErrors([]);
+      setSelectedBatches([]);
+    }
+  }, [open]);
+
+  // Fetch contractors (suppliers) with error handling
+  const { data: contractors = [], isLoading: contractorsLoading, error: contractorsError } = useQuery({
     queryKey: ["contractors"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("suppliers")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
+      console.log("Fetching contractors...");
+      try {
+        const { data, error } = await supabase
+          .from("suppliers")
+          .select("*")
+          .eq("is_active", true)
+          .order("name");
+        
+        if (error) {
+          console.error("Error fetching contractors:", error);
+          throw error;
+        }
+        
+        console.log("Contractors fetched:", data?.length || 0);
+        return data || [];
+      } catch (error) {
+        console.error("Failed to fetch contractors:", error);
+        throw error;
+      }
     },
+    enabled: open, // Only fetch when modal is open
   });
 
-  // Fetch materials
-  const { data: materials = [] } = useQuery({
+  // Fetch materials with error handling
+  const { data: materials = [], isLoading: materialsLoading, error: materialsError } = useQuery({
     queryKey: ["materials"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("materials")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
+      console.log("Fetching materials...");
+      try {
+        const { data, error } = await supabase
+          .from("materials")
+          .select("*")
+          .eq("is_active", true)
+          .order("name");
+        
+        if (error) {
+          console.error("Error fetching materials:", error);
+          throw error;
+        }
+        
+        console.log("Materials fetched:", data?.length || 0);
+        return data || [];
+      } catch (error) {
+        console.error("Failed to fetch materials:", error);
+        throw error;
+      }
     },
+    enabled: open, // Only fetch when modal is open
   });
 
   const handleInputChange = (field: string, value: any) => {
+    console.log(`Form field changed: ${field} = ${value}`);
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear errors when user starts typing
+    if (formErrors.length > 0) {
+      setFormErrors([]);
+    }
+  };
+
+  const validateForm = () => {
+    const errors: string[] = [];
+    
+    if (!formData.contractor_id) errors.push("Please select a contractor");
+    if (!formData.input_sku_id) errors.push("Please select input material");
+    if (!formData.output_sku_id) errors.push("Please select output material");
+    if (!formData.process_type) errors.push("Please select process type");
+    if (formData.input_weight_kg <= 0) errors.push("Input weight must be greater than 0");
+    if (formData.expected_output_weight_kg <= 0) errors.push("Expected output weight must be greater than 0");
+    if (selectedBatches.length === 0) errors.push("Please select at least one batch");
+    
+    const totalWeight = selectedBatches.reduce((sum, batch) => sum + batch.selectedWeight, 0);
+    if (totalWeight !== formData.input_weight_kg) {
+      errors.push(`Selected batch weight (${totalWeight} kg) must match input weight (${formData.input_weight_kg} kg)`);
+    }
+    
+    setFormErrors(errors);
+    return errors.length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!formData.contractor_id || !formData.input_sku_id || !formData.output_sku_id) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (selectedBatches.length === 0) {
-      toast({
-        title: "Validation Error", 
-        description: "Please select at least one batch",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const totalWeight = selectedBatches.reduce((sum, batch) => sum + batch.selectedWeight, 0);
-
-    if (totalWeight !== formData.input_weight_kg) {
-      toast({
-        title: "Validation Error",
-        description: "Selected batch weight must match input weight",
-        variant: "destructive", 
-      });
+    console.log("Submit button clicked");
+    console.log("Form data:", formData);
+    console.log("Selected batches:", selectedBatches);
+    
+    if (!validateForm()) {
+      console.log("Form validation failed");
       return;
     }
 
     try {
+      console.log("Creating job work transformation...");
+      
       // For simplicity, using the first batch. In production, you might want to handle multiple batches
       const primaryBatch = selectedBatches[0];
       
-      await createTransformation.mutateAsync({
+      const transformationData = {
         contractor_id: formData.contractor_id,
         input_batch_id: primaryBatch.batch.id,
         input_weight_kg: formData.input_weight_kg,
@@ -114,8 +162,14 @@ export const JobWorkOutwardModal = ({ open, onOpenChange }: JobWorkOutwardModalP
         expected_return_date: formData.expected_return_date,
         processing_cost_per_kg: formData.processing_cost_per_kg,
         total_processing_cost: formData.processing_cost_per_kg * formData.input_weight_kg,
-      });
+      };
 
+      console.log("Submitting transformation data:", transformationData);
+      
+      await createTransformation.mutateAsync(transformationData);
+
+      console.log("Job work transformation created successfully");
+      
       // Reset form
       setFormData({
         contractor_id: "",
@@ -129,25 +183,94 @@ export const JobWorkOutwardModal = ({ open, onOpenChange }: JobWorkOutwardModalP
         processing_cost_per_kg: 0,
       });
       setSelectedBatches([]);
+      setFormErrors([]);
       onOpenChange(false);
+      
+      toast({
+        title: "Success",
+        description: "Job work outward entry created successfully",
+      });
+      
     } catch (error) {
       console.error("Error creating job work:", error);
+      toast({
+        title: "Error",
+        description: `Failed to create job work: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
     }
   };
 
   const totalSelectedWeight = selectedBatches.reduce((sum, batch) => sum + batch.selectedWeight, 0);
+  const isLoading = contractorsLoading || materialsLoading;
+  const hasError = contractorsError || materialsError;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Job Work Outward Entry</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-2">Loading...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Error state
+  if (hasError) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Job Work Outward Entry</DialogTitle>
+          </DialogHeader>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Error loading data: {contractorsError?.message || materialsError?.message || 'Unknown error'}
+            </AlertDescription>
+          </Alert>
+          <div className="flex justify-end mt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="jobwork-outward-description">
         <DialogHeader>
           <DialogTitle>Create Job Work Outward Entry</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="jobwork-outward-description">
             Send materials to contractor for processing. All weights are in kilograms.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Form Errors */}
+          {formErrors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <ul className="list-disc list-inside">
+                  {formErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Basic Information */}
           <Card>
             <CardHeader>
@@ -329,14 +452,27 @@ export const JobWorkOutwardModal = ({ open, onOpenChange }: JobWorkOutwardModalP
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                console.log("Cancel button clicked");
+                onOpenChange(false);
+              }}
+            >
               Cancel
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={createTransformation.isPending || totalSelectedWeight !== formData.input_weight_kg}
+              disabled={createTransformation.isPending}
             >
-              {createTransformation.isPending ? "Creating..." : "Create Job Work"}
+              {createTransformation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                "Create Job Work"
+              )}
             </Button>
           </div>
         </div>

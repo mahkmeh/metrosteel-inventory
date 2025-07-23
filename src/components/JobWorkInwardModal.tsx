@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface JobWorkInwardModalProps {
   open: boolean;
@@ -18,34 +20,64 @@ interface JobWorkInwardModalProps {
 }
 
 export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalProps) => {
+  console.log("JobWorkInwardModal rendered, open:", open);
+  
   const [selectedTransformation, setSelectedTransformation] = useState("");
   const [formData, setFormData] = useState({
     actual_output_weight_kg: 0,
     actual_return_date: new Date().toISOString().split("T")[0],
     notes: "",
   });
+  const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch sent job work transformations
-  const { data: sentTransformations = [] } = useQuery({
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      console.log("Inward modal opened, resetting form");
+      setSelectedTransformation("");
+      setFormData({
+        actual_output_weight_kg: 0,
+        actual_return_date: new Date().toISOString().split("T")[0],
+        notes: "",
+      });
+      setFormErrors([]);
+    }
+  }, [open]);
+
+  // Fetch sent job work transformations with error handling
+  const { data: sentTransformations = [], isLoading, error } = useQuery({
     queryKey: ["sent-transformations"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("job_work_transformations")
-        .select(`
-          *,
-          contractor:suppliers(name),
-          input_material:materials!job_work_transformations_input_sku_id_fkey(name, sku),
-          output_material:materials!job_work_transformations_output_sku_id_fkey(name, sku)
-        `)
-        .eq("status", "sent")
-        .order("sent_date", { ascending: false });
-      
-      if (error) throw error;
-      return data;
+      console.log("Fetching sent transformations...");
+      try {
+        const { data, error } = await supabase
+          .from("job_work_transformations")
+          .select(`
+            *,
+            contractor:suppliers(name),
+            input_material:materials!job_work_transformations_input_sku_id_fkey(name, sku),
+            output_material:materials!job_work_transformations_output_sku_id_fkey(name, sku)
+          `)
+          .eq("status", "sent")
+          .order("sent_date", { ascending: false });
+        
+        if (error) {
+          console.error("Error fetching sent transformations:", error);
+          throw error;
+        }
+        
+        console.log("Sent transformations fetched:", data?.length || 0);
+        return data || [];
+      } catch (error) {
+        console.error("Failed to fetch sent transformations:", error);
+        throw error;
+      }
     },
+    enabled: open, // Only fetch when modal is open
   });
 
   const selectedTransformationData = sentTransformations.find(
@@ -53,29 +85,48 @@ export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalPro
   );
 
   const handleInputChange = (field: string, value: any) => {
+    console.log(`Inward form field changed: ${field} = ${value}`);
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear errors when user starts typing
+    if (formErrors.length > 0) {
+      setFormErrors([]);
+    }
+  };
+
+  const validateForm = () => {
+    const errors: string[] = [];
+    
+    if (!selectedTransformation) {
+      errors.push("Please select a job work transformation");
+    }
+    
+    if (!formData.actual_output_weight_kg || formData.actual_output_weight_kg <= 0) {
+      errors.push("Please enter a valid output weight");
+    }
+    
+    if (!formData.actual_return_date) {
+      errors.push("Please select a return date");
+    }
+    
+    setFormErrors(errors);
+    return errors.length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!selectedTransformation) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a job work transformation",
-        variant: "destructive",
-      });
+    console.log("Inward submit button clicked");
+    console.log("Selected transformation:", selectedTransformation);
+    console.log("Form data:", formData);
+    
+    if (!validateForm()) {
+      console.log("Inward form validation failed");
       return;
     }
 
-    if (!formData.actual_output_weight_kg || formData.actual_output_weight_kg <= 0) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a valid output weight",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    setIsSubmitting(true);
+    
     try {
+      console.log("Processing job work inward...");
+      
       // Update the transformation with inward details
       const { error: updateError } = await supabase
         .from("job_work_transformations")
@@ -87,11 +138,16 @@ export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalPro
         })
         .eq("id", selectedTransformation);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating transformation:", updateError);
+        throw updateError;
+      }
 
       // Create a new batch for the returned material
       const transformation = selectedTransformationData;
       if (transformation) {
+        console.log("Creating output batch for returned material");
+        
         const { data: batchData, error: batchError } = await supabase
           .from("batches")
           .insert([{
@@ -106,7 +162,12 @@ export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalPro
           .select()
           .single();
 
-        if (batchError) throw batchError;
+        if (batchError) {
+          console.error("Error creating batch:", batchError);
+          throw batchError;
+        }
+
+        console.log("Batch created:", batchData);
 
         // Create inward transaction
         const { error: transactionError } = await supabase
@@ -124,7 +185,10 @@ export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalPro
             notes: `Job work return: ${transformation.job_work_number}`,
           }]);
 
-        if (transactionError) throw transactionError;
+        if (transactionError) {
+          console.error("Error creating transaction:", transactionError);
+          throw transactionError;
+        }
 
         // Update the transformation with the output batch
         const { error: updateBatchError } = await supabase
@@ -132,8 +196,13 @@ export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalPro
           .update({ output_batch_id: batchData.id })
           .eq("id", selectedTransformation);
 
-        if (updateBatchError) throw updateBatchError;
+        if (updateBatchError) {
+          console.error("Error updating transformation with batch:", updateBatchError);
+          throw updateBatchError;
+        }
       }
+
+      console.log("Job work inward completed successfully");
 
       toast({
         title: "Success",
@@ -147,31 +216,93 @@ export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalPro
         actual_return_date: new Date().toISOString().split("T")[0],
         notes: "",
       });
+      setFormErrors([]);
 
+      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["sent-transformations"] });
       queryClient.invalidateQueries({ queryKey: ["job-work-transformations"] });
+      queryClient.invalidateQueries({ queryKey: ["batches"] });
+      queryClient.invalidateQueries({ queryKey: ["batch-inventory"] });
+      
       onOpenChange(false);
     } catch (error) {
       console.error("Error creating job work inward:", error);
       toast({
         title: "Error",
-        description: "Failed to create job work inward entry",
+        description: `Failed to create job work inward entry: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Job Work Inward Entry</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-2">Loading...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Job Work Inward Entry</DialogTitle>
+          </DialogHeader>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Error loading data: {error.message || 'Unknown error'}
+            </AlertDescription>
+          </Alert>
+          <div className="flex justify-end mt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" aria-describedby="jobwork-inward-description">
         <DialogHeader>
           <DialogTitle>Create Job Work Inward Entry</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="jobwork-inward-description">
             Receive materials back from contractor after processing.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Form Errors */}
+          {formErrors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <ul className="list-disc list-inside">
+                  {formErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Select Job Work */}
           <Card>
             <CardHeader>
@@ -182,18 +313,27 @@ export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalPro
                 <Label htmlFor="transformation">Sent Job Work *</Label>
                 <Select 
                   value={selectedTransformation} 
-                  onValueChange={setSelectedTransformation}
+                  onValueChange={(value) => {
+                    console.log("Selected transformation:", value);
+                    setSelectedTransformation(value);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a sent job work" />
                   </SelectTrigger>
                   <SelectContent className="bg-background border shadow-md">
-                    {sentTransformations.map((transformation) => (
-                      <SelectItem key={transformation.id} value={transformation.id}>
-                        {transformation.job_work_number} - {transformation.contractor?.name} - 
-                        {transformation.input_material?.name} → {transformation.output_material?.name}
+                    {sentTransformations.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        No sent job work available
                       </SelectItem>
-                    ))}
+                    ) : (
+                      sentTransformations.map((transformation) => (
+                        <SelectItem key={transformation.id} value={transformation.id}>
+                          {transformation.job_work_number} - {transformation.contractor?.name} - 
+                          {transformation.input_material?.name} → {transformation.output_material?.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -285,14 +425,27 @@ export const JobWorkInwardModal = ({ open, onOpenChange }: JobWorkInwardModalPro
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                console.log("Inward cancel button clicked");
+                onOpenChange(false);
+              }}
+            >
               Cancel
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={!selectedTransformation || !formData.actual_output_weight_kg}
+              disabled={!selectedTransformation || !formData.actual_output_weight_kg || isSubmitting}
             >
-              Create Inward Entry
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                "Create Inward Entry"
+              )}
             </Button>
           </div>
         </div>

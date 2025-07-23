@@ -7,16 +7,18 @@ import { Plus } from "lucide-react";
 
 const JobWorkContractors = () => {
   const [showVendorModal, setShowVendorModal] = useState(false);
-  const [selectedContractor, setSelectedContractor] = useState(null);
+  const [selectedContractor, setSelectedContractor] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   const handleAddContractor = () => {
+    console.log("Add Contractor button clicked");
     setSelectedContractor(null);
     setIsEditing(false);
     setShowVendorModal(true);
   };
 
   const handleEditContractor = (contractorId: string) => {
+    console.log("Edit contractor clicked:", contractorId);
     // In a real app, you'd fetch the contractor data
     setSelectedContractor({ id: contractorId });
     setIsEditing(true);
@@ -30,7 +32,11 @@ const JobWorkContractors = () => {
           <h1 className="text-3xl font-bold">Job Work Contractors</h1>
           <p className="text-muted-foreground">Manage contractor relationships and performance</p>
         </div>
-        <Button onClick={handleAddContractor} className="gap-2">
+        <Button 
+          onClick={handleAddContractor} 
+          className="gap-2"
+          type="button"
+        >
           <Plus className="h-4 w-4" />
           Add Contractor
         </Button>
@@ -43,7 +49,10 @@ const JobWorkContractors = () => {
 
       <VendorModal
         open={showVendorModal}
-        onOpenChange={setShowVendorModal}
+        onOpenChange={(open) => {
+          console.log("Vendor modal state changing to:", open);
+          setShowVendorModal(open);
+        }}
         vendor={selectedContractor}
         isEditing={isEditing}
       />

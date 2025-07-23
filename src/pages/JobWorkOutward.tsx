@@ -8,6 +8,11 @@ import { Plus } from "lucide-react";
 const JobWorkOutward = () => {
   const [showOutwardModal, setShowOutwardModal] = useState(false);
 
+  const handleCreateOutward = () => {
+    console.log("Create Outward button clicked");
+    setShowOutwardModal(true);
+  };
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
@@ -15,17 +20,24 @@ const JobWorkOutward = () => {
           <h1 className="text-3xl font-bold">Outward Job Work</h1>
           <p className="text-muted-foreground">Track materials sent to contractors for processing</p>
         </div>
-        <Button onClick={() => setShowOutwardModal(true)} className="gap-2">
+        <Button 
+          onClick={handleCreateOutward} 
+          className="gap-2"
+          type="button"
+        >
           <Plus className="h-4 w-4" />
           Create Outward
         </Button>
       </div>
 
-      <OutwardTab onCreateOutward={() => setShowOutwardModal(true)} />
+      <OutwardTab onCreateOutward={handleCreateOutward} />
 
       <JobWorkOutwardModal
         open={showOutwardModal}
-        onOpenChange={setShowOutwardModal}
+        onOpenChange={(open) => {
+          console.log("Outward modal state changing to:", open);
+          setShowOutwardModal(open);
+        }}
       />
     </div>
   );
