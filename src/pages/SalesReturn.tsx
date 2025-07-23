@@ -76,27 +76,71 @@ export default function SalesReturn() {
   const { data: returns, isLoading } = useQuery({
     queryKey: ["sales-returns", searchTerm, statusFilter],
     queryFn: async () => {
+      // Fetch sales returns
       let query = supabase
         .from("sales_returns")
-        .select(`
-          *,
-          customers(name),
-          sales_orders(so_number),
-          sales_invoices(invoice_number)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
-
-      if (searchTerm) {
-        query = query.ilike("customers.name", `%${searchTerm}%`);
-      }
 
       if (statusFilter !== "all") {
         query = query.eq("status", statusFilter);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      const { data: returnsData, error: returnsError } = await query;
+      if (returnsError) throw returnsError;
+
+      if (!returnsData || returnsData.length === 0) {
+        return [];
+      }
+
+      // Fetch customers
+      const customerIds = [...new Set(returnsData.map(ret => ret.customer_id))];
+      const { data: customersData, error: customersError } = await supabase
+        .from("customers")
+        .select("id, name")
+        .in("id", customerIds);
+      
+      if (customersError) throw customersError;
+
+      // Fetch sales orders
+      const salesOrderIds = [...new Set(returnsData.map(ret => ret.sales_order_id))];
+      const { data: salesOrdersData, error: salesOrdersError } = await supabase
+        .from("sales_orders")
+        .select("id, so_number")
+        .in("id", salesOrderIds);
+      
+      if (salesOrdersError) throw salesOrdersError;
+
+      // Fetch sales invoices
+      const salesInvoiceIds = [...new Set(returnsData.map(ret => ret.sales_invoice_id))];
+      const { data: salesInvoicesData, error: salesInvoicesError } = await supabase
+        .from("sales_invoices")
+        .select("id, invoice_number")
+        .in("id", salesInvoiceIds);
+      
+      if (salesInvoicesError) throw salesInvoicesError;
+
+      // Create lookup maps
+      const customersMap = new Map(customersData?.map(c => [c.id, c]) || []);
+      const salesOrdersMap = new Map(salesOrdersData?.map(so => [so.id, so]) || []);
+      const salesInvoicesMap = new Map(salesInvoicesData?.map(si => [si.id, si]) || []);
+
+      // Join the data
+      const joinedData = returnsData.map(returnItem => ({
+        ...returnItem,
+        customers: customersMap.get(returnItem.customer_id) || null,
+        sales_orders: salesOrdersMap.get(returnItem.sales_order_id) || null,
+        sales_invoices: salesInvoicesMap.get(returnItem.sales_invoice_id) || null,
+      }));
+
+      // Apply search filter after joining
+      if (searchTerm) {
+        return joinedData.filter(returnItem => 
+          returnItem.customers?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      return joinedData;
     },
   });
 
