@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 
-const Layout = () => {
+export const Layout = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
