@@ -209,7 +209,12 @@ export const PurchaseOrderModal = ({ open, onOpenChange, editingOrder }: Purchas
         const { data: newOrder, error } = await supabase
           .from("purchase_orders")
           .insert({
-            ...values,
+            po_number: values.po_number!,
+            supplier_id: values.supplier_id!,
+            order_date: values.order_date,
+            expected_delivery: values.expected_delivery,
+            status: values.status || "draft",
+            notes: values.notes,
             total_amount: totalAmount,
           })
           .select()
