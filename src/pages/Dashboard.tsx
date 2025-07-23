@@ -23,9 +23,20 @@ import {
   Zap
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { KpiCard } from "@/components/KpiCard";
+import { useToast } from "@/hooks/use-toast";
+import { PaymentReminderModal } from "@/components/PaymentReminderModal";
+import { SupplierContactModal } from "@/components/SupplierContactModal";
+import { QuotationExtensionModal } from "@/components/QuotationExtensionModal";
 
 const Dashboard = () => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [paymentReminderOpen, setPaymentReminderOpen] = useState(false);
+  const [supplierContactOpen, setSupplierContactOpen] = useState(false);
+  const [quotationExtensionOpen, setQuotationExtensionOpen] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Comprehensive KPI Data Query
   const { data: kpiData, isLoading } = useQuery({
@@ -179,7 +190,76 @@ const Dashboard = () => {
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   });
 
-  // Define KPI Cards with proper color coding
+  // Action handlers for KPI cards
+  const handleLowStockAction = () => {
+    navigate("/materials?filter=low-stock");
+    toast({
+      title: "Navigating to Materials",
+      description: "Showing items with low stock levels",
+    });
+  };
+
+  const handleOverduePaymentsAction = () => {
+    setPaymentReminderOpen(true);
+  };
+
+  const handlePendingQuotesAction = () => {
+    navigate("/leads/quotations?filter=follow-up");
+    toast({
+      title: "Navigating to Quotations",
+      description: "Showing quotes requiring follow-up",
+    });
+  };
+
+  const handleOrdersToShipAction = () => {
+    navigate("/sales/orders?filter=pending");
+    toast({
+      title: "Navigating to Sales Orders",
+      description: "Showing orders ready for dispatch",
+    });
+  };
+
+  const handleLateSuppliersAction = () => {
+    setSupplierContactOpen(true);
+  };
+
+  const handleCreditBreachesAction = () => {
+    navigate("/sales/customers?filter=credit-breach");
+    toast({
+      title: "Navigating to Customers",
+      description: "Showing customers with credit limit breaches",
+    });
+  };
+
+  const handleExpiringQuotesAction = () => {
+    setQuotationExtensionOpen(true);
+  };
+
+  const handleExcessStockAction = () => {
+    navigate("/materials?filter=excess-stock");
+    toast({
+      title: "Navigating to Materials",
+      description: "Showing items with excess stock",
+    });
+  };
+
+  const handleDelayedOrdersAction = () => {
+    navigate("/sales/orders?filter=delayed");
+    toast({
+      title: "Navigating to Sales Orders",
+      description: "Showing delayed orders requiring attention",
+    });
+  };
+
+  const handleUrgentPaymentsAction = () => {
+    navigate("/purchase/payables?filter=urgent");
+    toast({
+      title: "Navigating to Payables",
+      description: "Showing urgent payments due",
+    });
+  };
+
+  // Define KPI Cards with actions
   const kpiCards = [
     // Row 1: Critical Operations
     {
@@ -189,7 +269,8 @@ const Dashboard = () => {
       subtitle: "Items below 10 units",
       status: (kpiData?.lowStockCount || 0) > 5 ? "critical" : (kpiData?.lowStockCount || 0) > 0 ? "warning" : "good",
       icon: AlertTriangle,
-      action: "View Details",
+      actionLabel: "View Details",
+      onAction: handleLowStockAction,
       details: `${kpiData?.lowStockItems?.length || 0} items need restocking`
     },
     {
@@ -199,7 +280,8 @@ const Dashboard = () => {
       subtitle: `${kpiData?.overduePayments || 0} customers`,
       status: (kpiData?.overdueAmount || 0) > 1000000 ? "critical" : (kpiData?.overdueAmount || 0) > 0 ? "warning" : "good",
       icon: CreditCard,
-      action: "Send Reminders",
+      actionLabel: "Send Reminders",
+      onAction: handleOverduePaymentsAction,
       details: `${Math.ceil((kpiData?.overdueAmount || 0) / 100000)} lakhs pending`
     },
     {
@@ -209,7 +291,8 @@ const Dashboard = () => {
       subtitle: `₹${((kpiData?.highValueQuoteAmount || 0) / 100000).toFixed(1)}L total`,
       status: (kpiData?.highValueOldQuotes || 0) > 3 ? "critical" : (kpiData?.highValueOldQuotes || 0) > 0 ? "warning" : "good",
       icon: Clock,
-      action: "Follow Up", 
+      actionLabel: "Follow Up",
+      onAction: handlePendingQuotesAction,
       details: "High value quotations pending"
     },
     {
@@ -219,7 +302,8 @@ const Dashboard = () => {
       subtitle: `₹${((kpiData?.unDispatchedValue || 0) / 100000).toFixed(1)}L value`,
       status: (kpiData?.unDispatchedOrders || 0) > 10 ? "critical" : (kpiData?.unDispatchedOrders || 0) > 0 ? "warning" : "good",
       icon: Package2,
-      action: "Process Orders",
+      actionLabel: "Process Orders",
+      onAction: handleOrdersToShipAction,
       details: "Ready for dispatch"
     },
     // Row 2: Supply Chain & Credit
@@ -230,7 +314,8 @@ const Dashboard = () => {
       subtitle: kpiData?.overduePOSuppliers?.join(", ") || "None",
       status: (kpiData?.overduePOs || 0) > 3 ? "critical" : (kpiData?.overduePOs || 0) > 0 ? "warning" : "good",
       icon: Truck,
-      action: "Contact Suppliers",
+      actionLabel: "Contact Suppliers",
+      onAction: handleLateSuppliersAction,
       details: "Purchase orders overdue"
     },
     {
@@ -240,7 +325,8 @@ const Dashboard = () => {
       subtitle: `₹${((kpiData?.excessAmount || 0) / 100000).toFixed(1)}L excess`,
       status: (kpiData?.creditBreaches || 0) > 0 ? "critical" : "good",
       icon: Ban,
-      action: "Review Credit",
+      actionLabel: "Review Credit",
+      onAction: handleCreditBreachesAction,
       details: "Credit limits exceeded"
     },
     {
@@ -250,7 +336,8 @@ const Dashboard = () => {
       subtitle: `₹${((kpiData?.expiringQuoteValue || 0) / 100000).toFixed(1)}L at risk`,
       status: (kpiData?.expiringQuotes || 0) > 2 ? "critical" : (kpiData?.expiringQuotes || 0) > 0 ? "warning" : "good",
       icon: Calendar,
-      action: "Extend Validity",
+      actionLabel: "Extend Validity",
+      onAction: handleExpiringQuotesAction,
       details: "Expiring in 3 days"
     },
     {
@@ -260,7 +347,8 @@ const Dashboard = () => {
       subtitle: `₹${((kpiData?.excessStockValue || 0) / 100000).toFixed(1)}L dead stock`,
       status: (kpiData?.excessStockItems || 0) > 5 ? "warning" : "good",
       icon: TrendingDown,
-      action: "Optimize Stock",
+      actionLabel: "Optimize Stock",
+      onAction: handleExcessStockAction,
       details: "Above maximum levels"
     },
     // Row 3: Customer Operations
@@ -271,7 +359,8 @@ const Dashboard = () => {
       subtitle: "Orders >5 days pending",
       status: (kpiData?.delayedOrders || 0) > 5 ? "critical" : (kpiData?.delayedOrders || 0) > 0 ? "warning" : "good",
       icon: AlertCircle,
-      action: "Escalate Orders",
+      actionLabel: "Escalate Orders",
+      onAction: handleDelayedOrdersAction,
       details: "Require immediate attention"
     },
     {
@@ -281,44 +370,11 @@ const Dashboard = () => {
       subtitle: `${kpiData?.urgentPayments || 0} suppliers`,
       status: (kpiData?.urgentPaymentAmount || 0) > 500000 ? "critical" : (kpiData?.urgentPaymentAmount || 0) > 0 ? "warning" : "good",
       icon: DollarSign,
-      action: "Process Payments",
+      actionLabel: "Process Payments",
+      onAction: handleUrgentPaymentsAction,
       details: "Due today/tomorrow"
     }
   ];
-
-  // Helper function to get status colors
-  const getStatusColors = (status: string) => {
-    switch (status) {
-      case "critical":
-        return {
-          bg: "bg-destructive/10 border-destructive/30",
-          text: "text-destructive",
-          icon: "text-destructive",
-          badge: "bg-destructive text-destructive-foreground"
-        };
-      case "warning":
-        return {
-          bg: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800",
-          text: "text-yellow-800 dark:text-yellow-200",
-          icon: "text-yellow-600 dark:text-yellow-400",
-          badge: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-        };
-      case "good":
-        return {
-          bg: "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800",
-          text: "text-green-800 dark:text-green-200",
-          icon: "text-green-600 dark:text-green-400",
-          badge: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-        };
-      default:
-        return {
-          bg: "bg-muted/50 border-border",
-          text: "text-muted-foreground",
-          icon: "text-muted-foreground",
-          badge: "bg-muted text-muted-foreground"
-        };
-    }
-  };
 
   if (isLoading) {
     return (
@@ -369,43 +425,19 @@ const Dashboard = () => {
           Critical Operations
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {kpiCards.slice(0, 4).map((kpi) => {
-            const Icon = kpi.icon;
-            const colors = getStatusColors(kpi.status);
-            
-            return (
-              <Card key={kpi.id} className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg ${colors.bg}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <div className="space-y-1">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {kpi.title}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <div className={`p-2 rounded-lg bg-background/50 ${colors.icon}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="text-2xl font-bold text-foreground">
-                        {kpi.value}
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">{kpi.subtitle}</p>
-                  <div className="flex items-center justify-between">
-                    <Button size="sm" variant="outline" className="gap-2 text-xs h-8">
-                      <Eye className="h-3 w-3" />
-                      {kpi.action}
-                    </Button>
-                    <Badge variant="secondary" className={`text-xs ${colors.badge}`}>
-                      {kpi.status.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{kpi.details}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {kpiCards.slice(0, 4).map((kpi) => (
+            <KpiCard
+              key={kpi.id}
+              title={kpi.title}
+              value={kpi.value}
+              subtitle={kpi.subtitle}
+              status={kpi.status as "critical" | "warning" | "good" | "info"}
+              icon={kpi.icon}
+              actionLabel={kpi.actionLabel}
+              onAction={kpi.onAction}
+              details={kpi.details}
+            />
+          ))}
         </div>
       </div>
 
@@ -416,46 +448,19 @@ const Dashboard = () => {
           Supply Chain & Credit Management
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {kpiCards.slice(4, 8).map((kpi) => {
-            const Icon = kpi.icon;
-            const colors = getStatusColors(kpi.status);
-            
-            return (
-              <Card key={kpi.id} className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg ${colors.bg}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <div className="space-y-1">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {kpi.title}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <div className={`p-2 rounded-lg bg-background/50 ${colors.icon}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="text-2xl font-bold text-foreground">
-                        {kpi.value}
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground truncate">{kpi.subtitle}</p>
-                  <div className="flex items-center justify-between">
-                    <Button size="sm" variant="outline" className="gap-2 text-xs h-8">
-                      {kpi.id === 'lateSuppliers' && <Phone className="h-3 w-3" />}
-                      {kpi.id === 'creditBreaches' && <CheckCircle className="h-3 w-3" />}
-                      {kpi.id === 'expiringQuotes' && <Send className="h-3 w-3" />}
-                      {kpi.id === 'excessStock' && <ArrowRight className="h-3 w-3" />}
-                      {kpi.action}
-                    </Button>
-                    <Badge variant="secondary" className={`text-xs ${colors.badge}`}>
-                      {kpi.status.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{kpi.details}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {kpiCards.slice(4, 8).map((kpi) => (
+            <KpiCard
+              key={kpi.id}
+              title={kpi.title}
+              value={kpi.value}
+              subtitle={kpi.subtitle}
+              status={kpi.status as "critical" | "warning" | "good" | "info"}
+              icon={kpi.icon}
+              actionLabel={kpi.actionLabel}
+              onAction={kpi.onAction}
+              details={kpi.details}
+            />
+          ))}
         </div>
       </div>
 
@@ -466,43 +471,19 @@ const Dashboard = () => {
           Customer Operations
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {kpiCards.slice(8, 10).map((kpi) => {
-            const Icon = kpi.icon;
-            const colors = getStatusColors(kpi.status);
-            
-            return (
-              <Card key={kpi.id} className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg ${colors.bg}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <div className="space-y-1">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {kpi.title}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <div className={`p-2 rounded-lg bg-background/50 ${colors.icon}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="text-2xl font-bold text-foreground">
-                        {kpi.value}
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">{kpi.subtitle}</p>
-                  <div className="flex items-center justify-between">
-                    <Button size="sm" variant="outline" className="gap-2 text-xs h-8">
-                      <ArrowRight className="h-3 w-3" />
-                      {kpi.action}
-                    </Button>
-                    <Badge variant="secondary" className={`text-xs ${colors.badge}`}>
-                      {kpi.status.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{kpi.details}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {kpiCards.slice(8, 10).map((kpi) => (
+            <KpiCard
+              key={kpi.id}
+              title={kpi.title}
+              value={kpi.value}
+              subtitle={kpi.subtitle}
+              status={kpi.status as "critical" | "warning" | "good" | "info"}
+              icon={kpi.icon}
+              actionLabel={kpi.actionLabel}
+              onAction={kpi.onAction}
+              details={kpi.details}
+            />
+          ))}
         </div>
       </div>
 
@@ -532,7 +513,7 @@ const Dashboard = () => {
               ))}
             </div>
             <div className="mt-4 pt-4 border-t">
-              <Button className="w-full gap-2">
+              <Button className="w-full gap-2" onClick={handleLowStockAction}>
                 <Eye className="h-4 w-4" />
                 View All Low Stock Items ({kpiData.lowStockCount})
               </Button>
@@ -540,6 +521,28 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Modals */}
+      <PaymentReminderModal
+        open={paymentReminderOpen}
+        onOpenChange={setPaymentReminderOpen}
+        overduePayments={kpiData?.overduePayments || 0}
+        overdueAmount={kpiData?.overdueAmount || 0}
+      />
+
+      <SupplierContactModal
+        open={supplierContactOpen}
+        onOpenChange={setSupplierContactOpen}
+        suppliers={kpiData?.overduePOSuppliers || []}
+        overdueCount={kpiData?.overduePOs || 0}
+      />
+
+      <QuotationExtensionModal
+        open={quotationExtensionOpen}
+        onOpenChange={setQuotationExtensionOpen}
+        expiringQuotes={kpiData?.expiringQuotes || 0}
+        expiringValue={kpiData?.expiringQuoteValue || 0}
+      />
     </div>
   );
 };
