@@ -155,7 +155,6 @@ const Purchase = () => {
           .eq("id", editingOrder.id);
         if (error) throw error;
 
-        // Update order items
         await supabase
           .from("purchase_order_items")
           .delete()
@@ -171,7 +170,7 @@ const Purchase = () => {
           notes: item.notes,
           purchase_order_id: editingOrder.id,
           batch_selections: item.batch_selections || null,
-          batch_id: null // batch_id is not used here, batch_selections used instead
+          batch_id: null
         }));
         
         const { error: itemsError } = await supabase
@@ -349,9 +348,6 @@ const Purchase = () => {
       expected_delivery: order.expected_delivery || "",
       notes: order.notes || "",
     });
-    // Load order items with batch selections if available
-    // For simplicity, assume orderItems are fetched separately or passed in
-    // Here we reset orderItems to empty; in real app, fetch and set
     setOrderItems([]);
     setIsDialogOpen(true);
   };
@@ -414,8 +410,8 @@ const Purchase = () => {
       order_type: "stock",
       linked_sales_order_id: null,
       notes: "",
-      batch_selections: batchSelections, // Store batch selections
-      selected_batches: batchSelections.map(bs => bs.batch), // For display
+      batch_selections: batchSelections,
+      selected_batches: batchSelections.map(bs => bs.batch),
     };
 
     setOrderItems([...orderItems, newItem]);
@@ -532,7 +528,6 @@ const Purchase = () => {
             </DialogHeader>
             
             <div className="flex h-[calc(90vh-200px)] overflow-hidden">
-              {/* Left Side - Form */}
               <div className="flex-1 overflow-y-auto pr-6">
                 <form onSubmit={handleSubmit} className="space-y-6 py-4">
                   {/* Basic Information */}
@@ -856,7 +851,6 @@ const Purchase = () => {
 
                   {orderItems.length > 0 ? (
                     <div className="space-y-4 max-h-[calc(90vh-300px)] overflow-y-auto">
-                      {/* Batch management moved to modal, so this can be simplified or removed */}
                       <div className="text-center text-muted-foreground text-sm">
                         Use the product selection modal to manage batches.
                       </div>
@@ -920,9 +914,9 @@ const Purchase = () => {
             <TableBody>
               {orders?.map((order) => (
                 <Collapsible key={order.id} open={expandedRows.has(order.id)} onOpenChange={() => toggleRowExpansion(order.id)}>
-                  <TableRow className="border-b-0">
-                    <TableCell>
-                      <CollapsibleTrigger asChild>
+                  <CollapsibleTrigger asChild>
+                    <TableRow className="border-b-0 cursor-pointer hover:bg-muted/50">
+                      <TableCell>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           {expandedRows.has(order.id) ? (
                             <ChevronDown className="h-4 w-4" />
@@ -930,32 +924,35 @@ const Purchase = () => {
                             <ChevronRight className="h-4 w-4" />
                           )}
                         </Button>
-                      </CollapsibleTrigger>
-                    </TableCell>
-                    <TableCell className="font-medium">{order.po_number}</TableCell>
-                    <TableCell>{order.suppliers?.name || "-"}</TableCell>
-                    <TableCell>{formatCurrency(order.total_amount)}</TableCell>
-                    <TableCell>{getStatusBadge(order.status)}</TableCell>
-                    <TableCell>
-                      {order.order_date
-                        ? new Date(order.order_date).toLocaleDateString()
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {order.expected_delivery
-                        ? new Date(order.expected_delivery).toLocaleDateString()
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(order)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell className="font-medium">{order.po_number}</TableCell>
+                      <TableCell>{order.suppliers?.name || "-"}</TableCell>
+                      <TableCell>{formatCurrency(order.total_amount)}</TableCell>
+                      <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      <TableCell>
+                        {order.order_date
+                          ? new Date(order.order_date).toLocaleDateString()
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {order.expected_delivery
+                          ? new Date(order.expected_delivery).toLocaleDateString()
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(order);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </CollapsibleTrigger>
                   <CollapsibleContent asChild>
                     <TableRow>
                       <TableCell colSpan={8} className="p-0">
