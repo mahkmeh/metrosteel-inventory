@@ -50,15 +50,18 @@ const JobWork = () => {
         </TabsList>
 
         <TabsContent value="outward">
-          <OutwardTab />
+          <OutwardTab onCreateOutward={() => setShowOutwardModal(true)} />
         </TabsContent>
 
         <TabsContent value="inward">
-          <InwardTab />
+          <InwardTab onCreateInward={() => setShowInwardModal(true)} />
         </TabsContent>
 
         <TabsContent value="contractors">
-          <ContractorsTab />
+          <ContractorsTab 
+            onAddContractor={() => {}} 
+            onEditContractor={() => {}} 
+          />
         </TabsContent>
       </Tabs>
 

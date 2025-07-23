@@ -47,9 +47,10 @@ type PaymentFormValues = z.infer<typeof paymentSchema>;
 interface PaymentRecordingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  payable?: any;
 }
 
-export const PaymentRecordingModal = ({ open, onOpenChange }: PaymentRecordingModalProps) => {
+export const PaymentRecordingModal = ({ open, onOpenChange, payable }: PaymentRecordingModalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
