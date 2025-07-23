@@ -28,7 +28,7 @@ const navigation = [
   { title: "Materials", url: "/materials", icon: Package },
   { title: "Customers", url: "/customers", icon: Users },
   { title: "Quotations", url: "/quotations", icon: FileText },
-  { title: "Sales", url: "/sales", icon: ShoppingCart },
+  { title: "Sales Order", url: "/sales", icon: ShoppingCart },
 ]
 
 const purchaseNavigation = [
