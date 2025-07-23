@@ -1,3 +1,4 @@
+
 // Fixed imports and routing structure
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -29,10 +30,10 @@ function App() {
             <Route path="customers" element={<Customers />} />
             <Route path="quotations" element={<Quotations />} />
             <Route path="purchase" element={<Purchase />} />
-            <Route path="purchase-orders" element={<PurchaseOrders />} />
-            <Route path="purchase-invoice" element={<PurchaseInvoice />} />
-            <Route path="purchase-return" element={<PurchaseReturn />} />
-            <Route path="payables" element={<Payables />} />
+            <Route path="purchase/orders" element={<PurchaseOrders />} />
+            <Route path="purchase/invoice" element={<PurchaseInvoice />} />
+            <Route path="purchase/returns" element={<PurchaseReturn />} />
+            <Route path="purchase/payables" element={<Payables />} />
             <Route path="job-work" element={<JobWork />} />
             <Route path="vendors" element={<Vendors />} />
             <Route path="sales" element={<Sales />} />
