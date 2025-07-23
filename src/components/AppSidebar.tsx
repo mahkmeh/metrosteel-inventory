@@ -85,7 +85,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center justify-between p-2">
           {!collapsed && (
-            <h1 className="text-lg font-bold text-sidebar-foreground">SteelTrader</h1>
+            <h1 className="text-lg font-bold text-sidebar-foreground">METRO STEEL</h1>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
