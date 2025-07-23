@@ -67,15 +67,26 @@ export default function SalesInvoice() {
   const { data: invoices, isLoading } = useQuery({
     queryKey: ["sales-invoices", searchTerm, statusFilter],
     queryFn: async () => {
-      // Temporary: Use purchase_invoices as placeholder until types are updated
       let query = supabase
-        .from("purchase_invoices")
-        .select(`*`)
+        .from("sales_invoices")
+        .select(`
+          *,
+          customers(name),
+          sales_orders(so_number)
+        `)
         .order("created_at", { ascending: false });
+
+      if (searchTerm) {
+        query = query.ilike("customers.name", `%${searchTerm}%`);
+      }
+
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
-      return [];
+      return data;
     },
   });
 
@@ -106,8 +117,10 @@ export default function SalesInvoice() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      // Temporary: Disable creation until types are updated
-      throw new Error("Sales invoices will be available after database types update");
+      const { error } = await supabase
+        .from("sales_invoices")
+        .insert([data]);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales-invoices"] });
@@ -122,8 +135,11 @@ export default function SalesInvoice() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      // Temporary: Disable updates until types are updated
-      throw new Error("Sales invoices will be available after database types update");
+      const { error } = await supabase
+        .from("sales_invoices")
+        .update(data)
+        .eq("id", id);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales-invoices"] });
