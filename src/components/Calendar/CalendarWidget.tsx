@@ -69,7 +69,7 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events, selectedDate, o
           onSelect={(date) => date && onDateSelect(date)}
           month={month}
           onMonthChange={setMonth}
-          className="w-full"
+          className="w-full pointer-events-auto"
           components={{
             Day: ({ date, displayMonth }) => (
               <div className="relative w-full h-full">
