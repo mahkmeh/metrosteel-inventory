@@ -29,6 +29,7 @@ import JobWork from "./pages/JobWork";
 import JobWorkOutward from "./pages/JobWorkOutward";
 import JobWorkInward from "./pages/JobWorkInward";
 import JobWorkContractors from "./pages/JobWorkContractors";
+import MasterCalendar from "./pages/MasterCalendar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="dashboard" element={<Dashboard />} />
+              <Route path="calendar" element={<MasterCalendar />} />
               <Route path="materials" element={<Materials />} />
               <Route path="materials/:id" element={<MaterialDetails />} />
               <Route path="leads" element={<Navigate to="/leads/quotations" replace />} />

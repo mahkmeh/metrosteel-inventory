@@ -1,4 +1,4 @@
-import { Package, Warehouse, Users, FileText, ShoppingCart, BarChart3, Moon, Sun, Monitor, Truck, Wrench, Receipt, Building, RotateCcw, CreditCard, ChevronDown, MessageCircle, Phone } from "lucide-react"
+import { Package, Warehouse, Users, FileText, ShoppingCart, BarChart3, Moon, Sun, Monitor, Truck, Wrench, Receipt, Building, RotateCcw, CreditCard, ChevronDown, MessageCircle, Phone, Calendar } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useTheme } from "@/hooks/use-theme"
 import {
@@ -25,6 +25,7 @@ import { useState } from "react"
 
 const navigation = [
   { title: "Dashboard", url: "/", icon: BarChart3 },
+  { title: "Master Calendar", url: "/calendar", icon: Calendar },
   { title: "Materials", url: "/materials", icon: Package },
 ]
 
