@@ -3,7 +3,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, isToday } from "date-fns";
 
 interface CalendarWidgetProps {
   events: CalendarEvent[];
@@ -71,18 +71,24 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events, selectedDate, o
           onMonthChange={setMonth}
           className="w-full pointer-events-auto"
           components={{
-            Day: (dayProps: any) => (
-              <button
-                className={cn(
-                  "relative w-9 h-9 p-0 font-normal text-sm rounded-md hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                  dayProps.className
-                )}
-                onClick={() => onDateSelect(dayProps.date)}
-              >
-                {format(dayProps.date, 'd')}
-                {renderDayContent(dayProps.date)}
-              </button>
-            ),
+            Day: (dayProps: any) => {
+              const isTodayDate = isToday(dayProps.date);
+              const isSelected = isSameDay(dayProps.date, selectedDate);
+              
+              return (
+                <button
+                  className={cn(
+                    "relative w-9 h-9 p-0 font-normal text-sm rounded-md hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                    isTodayDate && !isSelected && "bg-accent/50 font-medium",
+                    dayProps.className
+                  )}
+                  onClick={() => onDateSelect(dayProps.date)}
+                >
+                  {format(dayProps.date, 'd')}
+                  {renderDayContent(dayProps.date)}
+                </button>
+              );
+            },
           }}
           modifiers={{
             hasEvents: (date) => getEventsForDate(date).length > 0,
