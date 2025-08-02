@@ -71,13 +71,17 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events, selectedDate, o
           onMonthChange={setMonth}
           className="w-full pointer-events-auto"
           components={{
-            Day: ({ date, displayMonth }) => (
-              <div className="relative w-full h-full">
-                <div className="relative p-2 text-center text-sm">
-                  {format(date, 'd')}
-                  {renderDayContent(date)}
-                </div>
-              </div>
+            Day: (dayProps: any) => (
+              <button
+                className={cn(
+                  "relative w-9 h-9 p-0 font-normal text-sm rounded-md hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                  dayProps.className
+                )}
+                onClick={() => onDateSelect(dayProps.date)}
+              >
+                {format(dayProps.date, 'd')}
+                {renderDayContent(dayProps.date)}
+              </button>
             ),
           }}
           modifiers={{
