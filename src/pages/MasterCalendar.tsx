@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { startOfMonth, endOfMonth, addDays, subDays } from "date-fns";
+import { Plus } from "lucide-react";
 import CalendarWidget from "@/components/Calendar/CalendarWidget";
 import EventFilters from "@/components/Calendar/EventFilters";
 import IntelligenceDashboard from "@/components/Calendar/IntelligenceDashboard";
+import { TodoModal } from "@/components/Calendar/TodoModal";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +15,7 @@ const MasterCalendar = () => {
     'sales', 'collection', 'meeting'
   ]);
   const [viewPeriod, setViewPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [todoModalOpen, setTodoModalOpen] = useState(false);
 
   // Calculate date range for events (current month ± buffer)
   const startDate = subDays(startOfMonth(selectedDate), 7);
@@ -53,11 +56,17 @@ const MasterCalendar = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Master Business Calendar</h1>
-        <p className="text-muted-foreground">
-          Comprehensive view of all business activities, deadlines, and opportunities
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Master Business Calendar</h1>
+          <p className="text-muted-foreground">
+            Comprehensive view of all business activities, deadlines, and opportunities
+          </p>
+        </div>
+        <Button onClick={() => setTodoModalOpen(true)} className="shrink-0">
+          <Plus className="mr-2 h-4 w-4" />
+          TO DO
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -94,6 +103,12 @@ const MasterCalendar = () => {
           />
         </div>
       </div>
+      
+      <TodoModal
+        open={todoModalOpen}
+        onOpenChange={setTodoModalOpen}
+        defaultDate={selectedDate}
+      />
     </div>
   );
 };
