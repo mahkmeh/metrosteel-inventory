@@ -3,14 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CalendarEvent, useUpdateEventStatus } from "@/hooks/useCalendarEvents";
-import { format, isToday, isThisWeek, isThisMonth } from "date-fns";
+import { format, isToday, isThisWeek, isThisMonth, isSameDay } from "date-fns";
 import { Phone, Mail, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface IntelligenceDashboardProps {
   events: CalendarEvent[];
   selectedDate: Date;
-  viewPeriod: 'today' | 'week' | 'month';
+  viewPeriod: 'today' | 'week' | 'month' | 'selected';
 }
 
 const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ 
@@ -30,6 +30,8 @@ const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({
           return isThisWeek(eventDate);
         case 'month':
           return isThisMonth(eventDate);
+        case 'selected':
+          return isSameDay(eventDate, selectedDate);
         default:
           return true;
       }
@@ -121,6 +123,27 @@ const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({
             icon: AlertTriangle,
           }
         ];
+      case 'selected':
+        return [
+          {
+            title: "Selected Date",
+            value: filteredEvents.length,
+            subtitle: "events scheduled",
+            icon: Clock,
+          },
+          {
+            title: "Task Status",
+            value: `${completedEvents.length}/${filteredEvents.length}`,
+            subtitle: "completed",
+            icon: CheckCircle,
+          },
+          {
+            title: "Priority Items",
+            value: urgentEvents.length,
+            subtitle: "urgent tasks",
+            icon: AlertTriangle,
+          }
+        ];
     }
   };
 
@@ -148,7 +171,8 @@ const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({
           <CardTitle>
             {viewPeriod === 'today' ? "Today's Events" : 
              viewPeriod === 'week' ? "This Week's Events" : 
-             "This Month's Events"}
+             viewPeriod === 'month' ? "This Month's Events" :
+             `Events for ${format(selectedDate, 'MMMM dd, yyyy')}`}
           </CardTitle>
         </CardHeader>
         <CardContent>

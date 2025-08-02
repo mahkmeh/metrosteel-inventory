@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { startOfMonth, endOfMonth, addDays, subDays } from "date-fns";
+import { startOfMonth, endOfMonth, addDays, subDays, format } from "date-fns";
 import { Plus } from "lucide-react";
 import CalendarWidget from "@/components/Calendar/CalendarWidget";
 import EventFilters from "@/components/Calendar/EventFilters";
@@ -8,14 +8,16 @@ import { TodoModal } from "@/components/Calendar/TodoModal";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 const MasterCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([
     'sales', 'collection', 'meeting', 'job_work', 'purchase', 'follow_up', 'review'
   ]);
-  const [viewPeriod, setViewPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [viewPeriod, setViewPeriod] = useState<'today' | 'week' | 'month' | 'selected'>('today');
   const [todoModalOpen, setTodoModalOpen] = useState(false);
+  const [isDateManuallySelected, setIsDateManuallySelected] = useState(false);
 
   // Calculate date range for events (current month ± buffer)
   const startDate = subDays(startOfMonth(selectedDate), 7);
@@ -33,6 +35,12 @@ const MasterCalendar = () => {
         ? prev.filter(t => t !== type)
         : [...prev, type]
     );
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setIsDateManuallySelected(true);
+    setViewPeriod('selected');
   };
 
   if (isLoading) {
@@ -75,7 +83,7 @@ const MasterCalendar = () => {
           <CalendarWidget 
             events={events}
             selectedDate={selectedDate}
-            onDateSelect={setSelectedDate}
+            onDateSelect={handleDateSelect}
           />
           
           <EventFilters 
@@ -87,11 +95,24 @@ const MasterCalendar = () => {
         {/* Right Panel - Intelligence Dashboard */}
         <div className="lg:col-span-3">
           <div className="mb-4">
-            <Tabs value={viewPeriod} onValueChange={(value) => setViewPeriod(value as any)}>
-              <TabsList className="grid w-full grid-cols-3">
+            <Tabs value={viewPeriod} onValueChange={(value) => {
+              setViewPeriod(value as any);
+              if (value !== 'selected') {
+                setIsDateManuallySelected(false);
+              }
+            }}>
+              <TabsList className={cn(
+                "grid w-full",
+                isDateManuallySelected ? "grid-cols-4" : "grid-cols-3"
+              )}>
                 <TabsTrigger value="today">Today</TabsTrigger>
                 <TabsTrigger value="week">This Week</TabsTrigger>
                 <TabsTrigger value="month">This Month</TabsTrigger>
+                {isDateManuallySelected && (
+                  <TabsTrigger value="selected">
+                    {format(selectedDate, 'MMM dd')}
+                  </TabsTrigger>
+                )}
               </TabsList>
             </Tabs>
           </div>
