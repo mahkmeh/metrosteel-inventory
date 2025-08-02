@@ -105,7 +105,7 @@ const MasterCalendar = () => {
                 "grid w-full",
                 isDateManuallySelected ? "grid-cols-4" : "grid-cols-3"
               )}>
-                <TabsTrigger value="today">Today</TabsTrigger>
+                <TabsTrigger value="today">Today ({format(new Date(), 'MMM dd')})</TabsTrigger>
                 <TabsTrigger value="week">This Week</TabsTrigger>
                 <TabsTrigger value="month">This Month</TabsTrigger>
                 {isDateManuallySelected && (
