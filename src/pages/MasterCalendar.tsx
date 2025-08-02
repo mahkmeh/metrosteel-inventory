@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const MasterCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([
-    'sales', 'collection', 'meeting'
+    'sales', 'collection', 'meeting', 'job_work', 'purchase', 'follow_up', 'review'
   ]);
   const [viewPeriod, setViewPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [todoModalOpen, setTodoModalOpen] = useState(false);
