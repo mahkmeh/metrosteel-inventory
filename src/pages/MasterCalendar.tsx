@@ -117,11 +117,7 @@ const MasterCalendar = () => {
             </Tabs>
           </div>
           
-          <IntelligenceDashboard 
-            events={events}
-            selectedDate={selectedDate}
-            viewPeriod={viewPeriod}
-          />
+          {/* KPIs hidden as requested */}
         </div>
       </div>
       
