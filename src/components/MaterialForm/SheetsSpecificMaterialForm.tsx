@@ -303,7 +303,6 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
                   onBatchChange={(batch) => updateBatch(index + 1, batch)}
                   onRemove={() => removeBatch(index + 1)}
                   defaultMake={formData.make}
-                  isCompact={true}
                 />
               </div>
             ))}
