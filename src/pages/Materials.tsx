@@ -20,6 +20,7 @@ import { BatchManagementModal } from "@/components/BatchManagementModal";
 import { useCreateBatch } from "@/hooks/useBatches";
 import { MaterialTemplateForm } from "@/components/MaterialForm/MaterialTemplateForm";
 import { MobileFormSheet } from "@/components/MaterialForm/MobileFormSheet";
+import { SheetsSpecificMaterialForm } from "@/components/MaterialForm/SheetsSpecificMaterialForm";
 
 const Materials = () => {
   const navigate = useNavigate();
@@ -342,31 +343,35 @@ const Materials = () => {
         const batchErrors = [];
         
         for (const batch of formData.batches) {
-          if (batch.batch_code && batch.total_weight_kg > 0) {
+          // Handle both old batch structure and new SheetsBatch structure
+          const batchCode = batch.batch_code;
+          const totalWeight = batch.total_weight_kg || batch.total_inward_weight_kg || 0;
+          
+          if (batchCode && totalWeight > 0) {
             try {
               const batchResult = await createBatch.mutateAsync({
-                batch_code: batch.batch_code, // Use manual batch code
+                batch_code: batchCode, // Use manual batch code
                 sku_id: materialResult.id,
-                total_weight_kg: batch.total_weight_kg,
-                available_weight_kg: batch.total_weight_kg,
+                total_weight_kg: totalWeight,
+                available_weight_kg: totalWeight,
                 heat_number: batch.heat_number,
                 make: batch.make || formData.make,
                 notes: batch.notes,
               });
               batchResults.push(batchResult);
-              console.log("Created batch:", batch.batch_code);
+              console.log("Created batch:", batchCode);
             } catch (batchError: any) {
-              console.error("Error creating batch:", batch.batch_code, batchError);
+              console.error("Error creating batch:", batchCode, batchError);
               
               // Enhanced batch-specific error handling
               if (batchError.message?.includes("duplicate key value violates unique constraint")) {
                 if (batchError.message.includes("batch_code") || batchError.message.includes("batches_batch_code_key")) {
-                  batchErrors.push(`Batch code "${batch.batch_code}" already exists`);
+                  batchErrors.push(`Batch code "${batchCode}" already exists`);
                 } else {
-                  batchErrors.push(`Duplicate batch data for "${batch.batch_code}"`);
+                  batchErrors.push(`Duplicate batch data for "${batchCode}"`);
                 }
               } else {
-                batchErrors.push(`Failed to create batch "${batch.batch_code}": ${batchError.message}`);
+                batchErrors.push(`Failed to create batch "${batchCode}": ${batchError.message}`);
               }
             }
           }
@@ -419,6 +424,20 @@ const Materials = () => {
     }
 
     if (currentStep === 2) {
+      // If category is Sheet, show the new Sheets-specific form
+      if (formData.category === "Sheet") {
+        return (
+          <SheetsSpecificMaterialForm
+            formData={formData}
+            onFormDataChange={setFormData}
+            existingSKUs={existingSKUs}
+            isEditing={!!editingMaterial}
+            onSubmit={handleSubmit}
+            isSubmitting={createMaterial.isPending}
+          />
+        );
+      }
+      
       // If category requires sub-type, show SubTypeStep
       if (formData.category === "Pipe" || formData.category === "Bar") {
         return (
@@ -511,14 +530,25 @@ const Materials = () => {
         }}
         title={editingMaterial ? "Edit Material" : "Add New Material"}
       >
-        <MaterialTemplateForm
-          formData={formData}
-          onFormDataChange={setFormData}
-          existingSKUs={existingSKUs}
-          isEditing={!!editingMaterial}
-          onSubmit={handleSubmit}
-          isSubmitting={createMaterial.isPending}
-        />
+        {formData.category === "Sheet" ? (
+          <SheetsSpecificMaterialForm
+            formData={formData}
+            onFormDataChange={setFormData}
+            existingSKUs={existingSKUs}
+            isEditing={!!editingMaterial}
+            onSubmit={handleSubmit}
+            isSubmitting={createMaterial.isPending}
+          />
+        ) : (
+          <MaterialTemplateForm
+            formData={formData}
+            onFormDataChange={setFormData}
+            existingSKUs={existingSKUs}
+            isEditing={!!editingMaterial}
+            onSubmit={handleSubmit}
+            isSubmitting={createMaterial.isPending}
+          />
+        )}
       </MobileFormSheet>
 
       {/* loading state and table */}
