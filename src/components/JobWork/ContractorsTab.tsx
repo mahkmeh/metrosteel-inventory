@@ -100,39 +100,6 @@ export const ContractorsTab = ({ onAddContractor, onEditContractor }: Contractor
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <KpiCard
-          title="Active Contractors"
-          value={kpiData.activeContractors}
-          subtitle="Currently engaged"
-          status="good"
-          icon={Users}
-          actionLabel="View Active"
-          onAction={() => setStatusFilter("active")}
-          details={`${kpiData.activeContractors} contractors actively working`}
-        />
-        <KpiCard
-          title="Contact Information"
-          value={kpiData.withContact}
-          subtitle="Contractors with contact person"
-          status="info"
-          icon={TrendingUp}
-          actionLabel="View Details"
-          onAction={() => {}}
-          details={`${kpiData.withContact} contractors have contact person info`}
-        />
-        <KpiCard
-          title="Payment Terms"
-          value={kpiData.withPaymentTerms}
-          subtitle="Contractors with payment terms"
-          status="good"
-          icon={Star}
-          actionLabel="View Terms"
-          onAction={() => {}}
-          details="Contractors with defined payment terms"
-        />
-      </div>
 
       {/* Action Button */}
       <div className="flex justify-between items-center">

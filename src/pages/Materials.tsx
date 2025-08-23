@@ -475,54 +475,6 @@ const Materials = () => {
 
   return (
     <div className="px-4 sm:px-0">
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <KpiCard
-          title="Total Inventory Value"
-          value={`₹${(kpiData?.totalInventoryValue || 0).toLocaleString('en-IN')}`}
-          subtitle={`${kpiData?.totalMaterials || 0} materials`}
-          status="info"
-          icon={DollarSign}
-          actionLabel="View Report"
-          onAction={() => toast({ title: "Inventory Report", description: "Opening inventory valuation report" })}
-        />
-        <KpiCard
-          title="Reorder Now"
-          value={kpiData?.reorderNow || 0}
-          subtitle="below minimum"
-          status="critical"
-          icon={AlertTriangle}
-          actionLabel="Create PO"
-          onAction={() => toast({ title: "Create PO", description: "Opening purchase order creation" })}
-        />
-        <KpiCard
-          title="Excess Stock"
-          value={kpiData?.excessStock.count || 0}
-          subtitle={`₹${(kpiData?.excessStock.value || 0).toLocaleString('en-IN')} value`}
-          status="warning"
-          icon={Package}
-          actionLabel="Liquidate"
-          onAction={() => toast({ title: "Liquidate", description: "Opening stock liquidation" })}
-        />
-        <KpiCard
-          title="Price Updates Required"
-          value={kpiData?.priceUpdatesRequired || 0}
-          subtitle="with old prices"
-          status="info"
-          icon={Truck}
-          actionLabel="Update Pricing"
-          onAction={() => toast({ title: "Update Pricing", description: "Opening price update workflow" })}
-        />
-        <KpiCard
-          title="Quality Hold"
-          value={kpiData?.qualityHold || 0}
-          subtitle="materials on hold"
-          status="warning"
-          icon={ShieldAlert}
-          actionLabel="Quality Check"
-          onAction={() => toast({ title: "Quality Check", description: "Opening quality management" })}
-        />
-      </div>
 
       <div className="flex justify-between items-center mb-6">
         <div>

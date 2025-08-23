@@ -530,26 +530,6 @@ const Quotations = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* KPI Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {kpiCards.map((kpi) => (
-          <KpiCard
-            key={kpi.id}
-            title={kpi.title}
-            value={kpi.value}
-            subtitle={kpi.subtitle}
-            status={kpi.status}
-            icon={kpi.icon}
-            actionLabel={kpi.actionLabel}
-            onAction={() => {
-              // Action handlers can be implemented later
-              console.log(`Action for ${kpi.id}`);
-            }}
-            details={kpi.details}
-          />
-        ))}
-      </div>
-      
       {/* Header with Title and Centered Add Button */}
       <div className="text-center space-y-4">
         <div>

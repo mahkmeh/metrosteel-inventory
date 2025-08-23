@@ -107,39 +107,6 @@ export const OutwardTab = ({ onCreateOutward }: OutwardTabProps) => {
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <KpiCard
-          title="Active Job Work"
-          value={kpiData.activeJobWork}
-          subtitle="Items with contractors"
-          status="info"
-          icon={Package}
-          actionLabel="View Active"
-          onAction={() => setStatusFilter("sent")}
-          details={`${kpiData.activeJobWork} items currently being processed`}
-        />
-        <KpiCard
-          title="Ready for Dispatch"
-          value={kpiData.readyForDispatch}
-          subtitle="Completed items"
-          status="good"
-          icon={CheckCircle}
-          actionLabel="View Ready"
-          onAction={() => setStatusFilter("completed")}
-          details={`${kpiData.readyForDispatch} items ready for collection`}
-        />
-        <KpiCard
-          title="Total Value"
-          value={formatCurrency(kpiData.totalValue)}
-          subtitle="Materials out for job work"
-          status="info"
-          icon={DollarSign}
-          actionLabel="View Details"
-          onAction={() => {}}
-          details="Total value of materials with contractors"
-        />
-      </div>
 
       {/* Action Button */}
       <div className="flex justify-between items-center">

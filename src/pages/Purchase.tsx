@@ -455,45 +455,6 @@ const Purchase = () => {
 
   return (
     <div className="container mx-auto py-6">
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard
-          title="Overdue Deliveries"
-          value={typeof kpiData?.overdueDeliveries === 'object' ? kpiData.overdueDeliveries.count || 0 : kpiData?.overdueDeliveries || 0}
-          subtitle={`${kpiData?.overdueDeliveries?.avgDaysLate || 0} days late avg`}
-          status="critical"
-          icon={Package}
-          actionLabel="Contact Supplier"
-          onAction={() => toast({ title: "Contact Supplier", description: "Opening supplier contact view" })}
-        />
-        <KpiCard
-          title="Pending Approvals"
-          value={kpiData?.pendingApprovals.count || 0}
-          subtitle={`₹${(kpiData?.pendingApprovals.value || 0).toLocaleString('en-IN')}`}
-          status="warning"
-          icon={AlertTriangle}
-          actionLabel="Approve"
-          onAction={() => toast({ title: "Approve", description: "Opening approval workflow" })}
-        />
-        <KpiCard
-          title="Payment Due Today/Tomorrow"
-          value={`₹${(kpiData?.paymentsDue.amount || 0).toLocaleString('en-IN')}`}
-          subtitle={`${kpiData?.paymentsDue.suppliers || 0} suppliers`}
-          status="critical"
-          icon={DollarSign}
-          actionLabel="Process Payment"
-          onAction={() => toast({ title: "Process Payment", description: "Opening payment processing" })}
-        />
-        <KpiCard
-          title="Quality Issues"
-          value={kpiData?.qualityIssues || 0}
-          subtitle="materials on hold"
-          status="warning"
-          icon={AlertCircle}
-          actionLabel="Resolve"
-          onAction={() => toast({ title: "Resolve", description: "Opening quality management" })}
-        />
-      </div>
 
       <div className="flex justify-between items-center mb-6">
         <div>

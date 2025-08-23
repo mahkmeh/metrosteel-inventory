@@ -139,45 +139,6 @@ const Customers = () => {
 
   return (
     <div className="container mx-auto py-6">
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard
-          title="Credit Limit Breaches"
-          value={kpiData?.creditBreaches.count || 0}
-          subtitle={`₹${(kpiData?.creditBreaches.excessAmount || 0).toLocaleString('en-IN')} excess`}
-          status="critical"
-          icon={CreditCard}
-          actionLabel="Review Limits"
-          onAction={() => toast({ title: "Review Limits", description: "Opening credit limit review" })}
-        />
-        <KpiCard
-          title="Payment Overdue"
-          value={kpiData?.paymentOverdue.count || 0}
-          subtitle={`₹${(kpiData?.paymentOverdue.amount || 0).toLocaleString('en-IN')} • ${kpiData?.paymentOverdue.avgAging || 0}d avg`}
-          status="critical"
-          icon={DollarSign}
-          actionLabel="Collection Call"
-          onAction={() => toast({ title: "Collection Call", description: "Opening collection workflow" })}
-        />
-        <KpiCard
-          title="Inactive Customers"
-          value={kpiData?.inactiveCustomers || 0}
-          subtitle="no orders >90 days"
-          status="warning"
-          icon={UserX}
-          actionLabel="Re-engage"
-          onAction={() => toast({ title: "Re-engage", description: "Opening customer re-engagement" })}
-        />
-        <KpiCard
-          title="High Value at Risk"
-          value={kpiData?.highValueCustomersAtRisk || 0}
-          subtitle="declining orders"
-          status="warning"
-          icon={TrendingDown}
-          actionLabel="Retention Call"
-          onAction={() => toast({ title: "Retention Call", description: "Opening retention workflow" })}
-        />
-      </div>
 
       <div className="flex justify-between items-center mb-6">
         <div>

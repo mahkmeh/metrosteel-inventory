@@ -109,39 +109,6 @@ export const InwardTab = ({ onCreateInward }: InwardTabProps) => {
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <KpiCard
-          title="Pending Returns"
-          value={kpiData.pendingReturns}
-          subtitle="Items awaiting return"
-          status="warning"
-          icon={Clock}
-          actionLabel="View Pending"
-          onAction={() => setStatusFilter("sent")}
-          details={`${kpiData.pendingReturns} items pending return from contractors`}
-        />
-        <KpiCard
-          title="Quality Issues"
-          value={kpiData.qualityIssues}
-          subtitle="Items in quality check"
-          status="critical"
-          icon={AlertTriangle}
-          actionLabel="View Issues"
-          onAction={() => setStatusFilter("quality_check")}
-          details={`${kpiData.qualityIssues} items require quality verification`}
-        />
-        <KpiCard
-          title="Overdue Returns"
-          value={kpiData.overdueReturns}
-          subtitle="Items past expected date"
-          status="critical"
-          icon={AlertTriangle}
-          actionLabel="View Overdue"
-          onAction={() => {}}
-          details={`${kpiData.overdueReturns} items overdue for return`}
-        />
-      </div>
 
       {/* Action Button */}
       <div className="flex justify-between items-center">
