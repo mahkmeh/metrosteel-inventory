@@ -79,70 +79,128 @@ export const SheetsEnhancedBatchForm: React.FC<SheetsEnhancedBatchFormProps> = (
   if (isCompact) {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="font-medium text-sm">Additional Batch</h4>
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-medium text-sm">Batch Details</span>
           {onRemove && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onRemove}
-              className="text-destructive hover:text-destructive"
+              className="text-destructive hover:text-destructive h-7 w-7 p-0"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3 w-3" />
             </Button>
           )}
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div>
-            <Label className="text-xs">Batch Code *</Label>
+            <Label className="text-xs font-medium">Batch Code *</Label>
             <Input
               value={batch.batch_code}
               onChange={(e) => updateField("batch_code", e.target.value)}
-              placeholder="BATCH-002"
-              className="h-8"
+              placeholder="BATCH-001"
+              className="h-8 text-sm"
             />
           </div>
           
           <div>
-            <Label className="text-xs">Weight (KG) *</Label>
+            <Label className="text-xs font-medium">Inward Date</Label>
+            <Input
+              type="date"
+              value={batch.inward_date}
+              onChange={(e) => updateField("inward_date", e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          
+          <div>
+            <Label className="text-xs font-medium">Weight (KG) *</Label>
             <Input
               type="number"
               step="0.01"
               value={batch.total_inward_weight_kg || ""}
               onChange={(e) => updateField("total_inward_weight_kg", parseFloat(e.target.value) || 0)}
               placeholder="1000"
-              className="h-8"
+              className="h-8 text-sm"
             />
           </div>
           
           <div>
-            <Label className="text-xs">Pieces *</Label>
+            <Label className="text-xs font-medium">Pieces *</Label>
             <Input
               type="number"
               value={batch.total_inward_pieces || ""}
               onChange={(e) => updateField("total_inward_pieces", parseInt(e.target.value) || 0)}
               placeholder="50"
-              className="h-8"
+              className="h-8 text-sm"
             />
           </div>
           
           <div>
-            <Label className="text-xs">Price/KG *</Label>
+            <Label className="text-xs font-medium">Weight/Piece</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={batch.weight_per_piece?.toFixed(2) || ""}
+              placeholder="Auto"
+              disabled
+              className="h-8 text-sm bg-muted"
+            />
+          </div>
+          
+          <div>
+            <Label className="text-xs font-medium">Scale Weight/Piece</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={batch.scale_weight_per_piece || ""}
+              onChange={(e) => updateField("scale_weight_per_piece", parseFloat(e.target.value) || 0)}
+              placeholder="20.5"
+              className="h-8 text-sm"
+            />
+          </div>
+          
+          <div>
+            <Label className="text-xs font-medium">Total Scale Weight</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={batch.total_scale_weight?.toFixed(2) || ""}
+              placeholder="Auto"
+              disabled
+              className="h-8 text-sm bg-muted"
+            />
+          </div>
+          
+          <div>
+            <Label className="text-xs font-medium">Heat Number</Label>
+            <Input
+              value={batch.heat_number || ""}
+              onChange={(e) => updateField("heat_number", e.target.value)}
+              placeholder="HN-2024-001"
+              className="h-8 text-sm"
+            />
+          </div>
+          
+          <div>
+            <Label className="text-xs font-medium">Price/KG *</Label>
             <Input
               type="number"
               step="0.01"
               value={batch.base_price_per_kg || ""}
               onChange={(e) => updateField("base_price_per_kg", parseFloat(e.target.value) || 0)}
               placeholder="75.00"
-              className="h-8"
+              className="h-8 text-sm"
             />
           </div>
         </div>
         
         {batch.total_price && batch.total_price > 0 && (
-          <div className="text-right text-sm">
-            <span className="font-medium">Total: {formatCurrency(batch.total_price)}</span>
+          <div className="text-right">
+            <span className="text-sm font-semibold text-primary">
+              Total: {formatCurrency(batch.total_price)}
+            </span>
           </div>
         )}
       </div>

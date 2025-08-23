@@ -147,46 +147,47 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Section 1: Material Specific Information */}
       <Card>
-        <CardHeader>
-          <CardTitle>1. Material Information</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">1. Material Information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="material_name">Material Name *</Label>
+              <Label htmlFor="material_name" className="text-sm">Material Name *</Label>
               <Input
                 id="material_name"
                 value={formData.name}
                 onChange={(e) => updateField("name", e.target.value)}
                 placeholder="e.g., MS Sheet Hot Rolled"
                 required
+                className="h-9"
               />
             </div>
             
             <div>
-              <Label htmlFor="sku">SKU *</Label>
+              <Label htmlFor="sku" className="text-sm">SKU *</Label>
               <Input
                 id="sku"
                 value={formData.sku}
                 onChange={(e) => updateField("sku", e.target.value)}
                 placeholder="e.g., MS-SHT-3x1220x2440"
                 required
-                className={isSKUDuplicate ? "border-destructive" : ""}
+                className={`h-9 ${isSKUDuplicate ? "border-destructive" : ""}`}
               />
               {isSKUDuplicate && (
-                <p className="text-destructive text-sm mt-1">This SKU already exists</p>
+                <p className="text-destructive text-xs mt-1">This SKU already exists</p>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="grade">Grade *</Label>
+              <Label htmlFor="grade" className="text-sm">Grade *</Label>
               <Select value={formData.grade} onValueChange={(value) => updateField("grade", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Grade" />
                 </SelectTrigger>
                 <SelectContent>
@@ -198,9 +199,9 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
             </div>
             
             <div>
-              <Label htmlFor="finish">Finish *</Label>
+              <Label htmlFor="finish" className="text-sm">Finish *</Label>
               <Select value={formData.finish} onValueChange={(value) => updateField("finish", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Finish" />
                 </SelectTrigger>
                 <SelectContent>
@@ -212,9 +213,9 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
             </div>
             
             <div>
-              <Label htmlFor="make">Make *</Label>
+              <Label htmlFor="make" className="text-sm">Make *</Label>
               <Select value={formData.make} onValueChange={(value) => updateField("make", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Make" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,11 +227,11 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="thickness">Thickness (mm) *</Label>
+              <Label htmlFor="thickness" className="text-sm">Thickness (mm) *</Label>
               <Select value={formData.thickness} onValueChange={(value) => updateField("thickness", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Thickness" />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,9 +243,9 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
             </div>
             
             <div>
-              <Label htmlFor="width">Width (mm) *</Label>
+              <Label htmlFor="width" className="text-sm">Width (mm) *</Label>
               <Select value={formData.width} onValueChange={(value) => updateField("width", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Width" />
                 </SelectTrigger>
                 <SelectContent>
@@ -256,9 +257,9 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
             </div>
             
             <div>
-              <Label htmlFor="length">Length (mm) *</Label>
+              <Label htmlFor="length" className="text-sm">Length (mm) *</Label>
               <Select value={formData.length} onValueChange={(value) => updateField("length", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Length" />
                 </SelectTrigger>
                 <SelectContent>
@@ -275,15 +276,16 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
       {/* Section 2: First Batch Information */}
       {formData.batches.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>2. Batch Information</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">2. Batch Information</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             <SheetsEnhancedBatchForm
               batch={formData.batches[0]}
               onBatchChange={(batch) => updateBatch(0, batch)}
               onRemove={formData.batches.length > 1 ? () => removeBatch(0) : undefined}
               defaultMake={formData.make}
+              isCompact={true}
             />
           </CardContent>
         </Card>
@@ -292,17 +294,18 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
       {/* Section 3: Additional Batches */}
       {formData.batches.length > 1 && (
         <Card>
-          <CardHeader>
-            <CardTitle>3. Additional Batches</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">3. Additional Batches</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pt-2 space-y-3">
             {formData.batches.slice(1).map((batch, index) => (
-              <div key={index + 1} className="border rounded-lg p-4">
+              <div key={index + 1} className="border rounded-md p-3">
                 <SheetsEnhancedBatchForm
                   batch={batch}
                   onBatchChange={(batch) => updateBatch(index + 1, batch)}
                   onRemove={() => removeBatch(index + 1)}
                   defaultMake={formData.make}
+                  isCompact={true}
                 />
               </div>
             ))}
@@ -316,7 +319,7 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
           type="button"
           variant="outline"
           onClick={addNewBatch}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 h-9"
         >
           <Plus className="h-4 w-4" />
           Add Another Batch
@@ -324,11 +327,11 @@ export const SheetsSpecificMaterialForm: React.FC<SheetsSpecificMaterialFormProp
       </div>
 
       {/* Submit Button */}
-      <div className="flex justify-end pt-4">
+      <div className="flex justify-end pt-2">
         <Button
           onClick={onSubmit}
           disabled={!canSubmit() || isSubmitting}
-          className="min-w-[120px]"
+          className="min-w-[120px] h-9"
         >
           {isSubmitting ? "Saving..." : isEditing ? "Update Material" : "Create Material"}
         </Button>
