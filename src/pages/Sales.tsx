@@ -151,7 +151,11 @@ const Sales = () => {
           .eq("sales_order_id", editingOrder.id);
 
         const itemsWithOrderId = orderItems.map(item => ({
-          ...item,
+          material_id: item.material_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
+          notes: item.notes || "",
           sales_order_id: editingOrder.id
         }));
         
@@ -190,7 +194,11 @@ const Sales = () => {
             }
 
             const itemsWithOrderId = orderItems.map(item => ({
-              ...item,
+              material_id: item.material_id,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              line_total: item.line_total,
+              notes: item.notes || "",
               sales_order_id: newOrder.id
             }));
             
@@ -268,8 +276,8 @@ const Sales = () => {
 
     const newItem = {
       material_id: material.id,
-      material_name: material.name,
-      material_sku: material.sku,
+      material_name: material.name, // For display only
+      material_sku: material.sku,   // For display only
       quantity: 1,
       unit_price: material.base_price || 0,
       line_total: material.base_price || 0,
