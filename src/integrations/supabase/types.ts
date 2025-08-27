@@ -1358,6 +1358,7 @@ export type Database = {
       }
       sales_order_items: {
         Row: {
+          batch_selection_status: string
           created_at: string
           id: string
           line_total: number
@@ -1370,6 +1371,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          batch_selection_status?: string
           created_at?: string
           id?: string
           line_total?: number
@@ -1382,6 +1384,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          batch_selection_status?: string
           created_at?: string
           id?: string
           line_total?: number

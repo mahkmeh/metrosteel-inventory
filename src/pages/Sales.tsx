@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { OrderTimeline } from "@/components/OrderTimeline";
 import { StatusWorkflow } from "@/components/StatusWorkflow";
 import { EnhancedProductSelectionModal } from "@/components/EnhancedProductSelectionModal";
+import { BatchSelectionChoiceModal } from "@/components/BatchSelectionChoiceModal";
 import { KpiCard } from "@/components/KpiCard";
 import { useSalesKpis } from "@/hooks/useSalesKpis";
 
@@ -28,6 +29,9 @@ const Sales = () => {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showBatchChoiceModal, setShowBatchChoiceModal] = useState(false);
+  const [pendingMaterial, setPendingMaterial] = useState<any>(null);
+  const [pendingQuantity, setPendingQuantity] = useState(1);
   const [formData, setFormData] = useState({
     so_number: "",
     customer_id: "",
@@ -156,7 +160,8 @@ const Sales = () => {
           unit_price: item.unit_price,
           line_total: item.line_total,
           notes: item.notes || "",
-          sales_order_id: editingOrder.id
+          sales_order_id: editingOrder.id,
+          batch_selection_status: item.batch_selection_status || 'pending'
         }));
         
         const { error: itemsError } = await supabase
@@ -199,7 +204,8 @@ const Sales = () => {
               unit_price: item.unit_price,
               line_total: item.line_total,
               notes: item.notes || "",
-              sales_order_id: newOrder.id
+              sales_order_id: newOrder.id,
+              batch_selection_status: item.batch_selection_status || 'pending'
             }));
             
             const { data: insertItemsData, error: itemsError } = await supabase
@@ -303,13 +309,14 @@ const Sales = () => {
       line_total: (material.base_price || 0) * orderQuantity,
       notes: "",
       batchSelections: batchSelections, // Store batch selections temporarily
+      batch_selection_status: batchSelections.length > 0 ? 'selected' : 'pending'
     };
 
     setOrderItems([...orderItems, newItem]);
     setSearchQuery("");
     toast({
       title: "Material Added",
-      description: `${material.name} added to order${batchSelections.length > 0 ? ` with ${batchSelections.length} batch(es)` : ''}`,
+      description: `${material.name} added to order${batchSelections.length > 0 ? ` with ${batchSelections.length} batch(es)` : ' - batch selection pending'}`,
     });
   };
 
@@ -608,7 +615,11 @@ const Sales = () => {
                             <div
                               key={material.id}
                               className="p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 transition-colors"
-                              onClick={() => addMaterialToOrder(material)}
+                              onClick={() => {
+                                setPendingMaterial(material);
+                                setPendingQuantity(1);
+                                setShowBatchChoiceModal(true);
+                              }}
                             >
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
@@ -803,6 +814,37 @@ const Sales = () => {
           onOpenChange={setShowProductModal}
           materials={filteredMaterials || []}
           onSelectMaterial={addMaterialToOrder}
+        />
+
+        <BatchSelectionChoiceModal
+          isOpen={showBatchChoiceModal}
+          onClose={() => setShowBatchChoiceModal(false)}
+          onSelectNow={() => {
+            setShowBatchChoiceModal(false);
+            setShowProductModal(true);
+          }}
+          onSelectLater={() => {
+            const newItem = {
+              material_id: pendingMaterial.id,
+              material_name: pendingMaterial.name,
+              material_sku: pendingMaterial.sku,
+              quantity: pendingQuantity,
+              unit_price: pendingMaterial.base_price || 0,
+              line_total: (pendingMaterial.base_price || 0) * pendingQuantity,
+              notes: "",
+              batch_selection_status: 'pending',
+              batchSelections: []
+            };
+            setOrderItems([...orderItems, newItem]);
+            setShowBatchChoiceModal(false);
+            setPendingMaterial(null);
+            toast({
+              title: "Material Added",
+              description: `${pendingMaterial.name} added - batch selection pending`,
+            });
+          }}
+          materialName={pendingMaterial?.name || ""}
+          quantity={pendingQuantity}
         />
         </Dialog>
       </div>
