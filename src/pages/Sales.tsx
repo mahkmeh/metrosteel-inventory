@@ -160,6 +160,13 @@ const Sales = () => {
           .insert(itemsWithOrderId);
         if (itemsError) throw itemsError;
       } else {
+        // Generate unique SO number if not provided or empty
+        if (!orderWithTotal.so_number || orderWithTotal.so_number.trim() === "") {
+          const { data: soNumber, error: soError } = await supabase.rpc('generate_so_number');
+          if (soError) throw soError;
+          orderWithTotal.so_number = soNumber;
+        }
+
         const { data: newOrder, error } = await supabase
           .from("sales_orders")
           .insert([orderWithTotal])

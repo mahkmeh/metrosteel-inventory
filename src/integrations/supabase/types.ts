@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1741,11 +1741,15 @@ export type Database = {
       }
       generate_sku: {
         Args: {
-          p_grade: string
           p_category: string
+          p_grade: string
           p_thickness?: number
           p_width?: number
         }
+        Returns: string
+      }
+      generate_so_number: {
+        Args: Record<PropertyKey, never>
         Returns: string
       }
     }
