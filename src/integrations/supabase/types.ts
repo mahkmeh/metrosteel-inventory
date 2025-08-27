@@ -1329,6 +1329,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_order_batch_allocations: {
+        Row: {
+          allocated_quantity_kg: number
+          batch_id: string
+          created_at: string
+          id: string
+          sales_order_item_id: string
+          updated_at: string
+        }
+        Insert: {
+          allocated_quantity_kg?: number
+          batch_id: string
+          created_at?: string
+          id?: string
+          sales_order_item_id: string
+          updated_at?: string
+        }
+        Update: {
+          allocated_quantity_kg?: number
+          batch_id?: string
+          created_at?: string
+          id?: string
+          sales_order_item_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales_order_items: {
         Row: {
           created_at: string

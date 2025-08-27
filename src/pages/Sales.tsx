@@ -15,7 +15,7 @@ import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, X, Search, Clock, T
 import { useToast } from "@/hooks/use-toast";
 import { OrderTimeline } from "@/components/OrderTimeline";
 import { StatusWorkflow } from "@/components/StatusWorkflow";
-import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+import { EnhancedProductSelectionModal } from "@/components/EnhancedProductSelectionModal";
 import { KpiCard } from "@/components/KpiCard";
 import { useSalesKpis } from "@/hooks/useSalesKpis";
 
@@ -202,10 +202,30 @@ const Sales = () => {
               sales_order_id: newOrder.id
             }));
             
-            const { error: itemsError } = await supabase
+            const { data: insertItemsData, error: itemsError } = await supabase
               .from("sales_order_items")
-              .insert(itemsWithOrderId);
+              .insert(itemsWithOrderId)
+              .select();
             if (itemsError) throw itemsError;
+
+            // Create batch allocations for each item with batch selections
+            for (const [index, item] of orderItems.entries()) {
+              if (item.batchSelections && item.batchSelections.length > 0 && insertItemsData) {
+                const salesOrderItemId = insertItemsData[index].id;
+                
+                const batchAllocations = item.batchSelections.map((batch: any) => ({
+                  sales_order_item_id: salesOrderItemId,
+                  batch_id: batch.batch.id,
+                  allocated_quantity_kg: batch.selectedWeight
+                }));
+
+                const { error: batchError } = await supabase
+                  .from('sales_order_batch_allocations')
+                  .insert(batchAllocations);
+
+                if (batchError) throw batchError;
+              }
+            }
             
             break; // Success, exit the retry loop
           } catch (error) {
@@ -263,7 +283,7 @@ const Sales = () => {
     setIsDialogOpen(false);
   };
 
-  const addMaterialToOrder = (material: any) => {
+  const addMaterialToOrder = (material: any, orderQuantity: number = 1, batchSelections: any[] = []) => {
     const existingItem = orderItems.find(item => item.material_id === material.id);
     if (existingItem) {
       toast({
@@ -278,14 +298,19 @@ const Sales = () => {
       material_id: material.id,
       material_name: material.name, // For display only
       material_sku: material.sku,   // For display only
-      quantity: 1,
+      quantity: orderQuantity,
       unit_price: material.base_price || 0,
-      line_total: material.base_price || 0,
+      line_total: (material.base_price || 0) * orderQuantity,
       notes: "",
+      batchSelections: batchSelections, // Store batch selections temporarily
     };
 
     setOrderItems([...orderItems, newItem]);
     setSearchQuery("");
+    toast({
+      title: "Material Added",
+      description: `${material.name} added to order${batchSelections.length > 0 ? ` with ${batchSelections.length} batch(es)` : ''}`,
+    });
   };
 
   const updateOrderItem = (index: number, field: string, value: any) => {
@@ -773,12 +798,12 @@ const Sales = () => {
             </form>
           </DialogContent>
 
-          <ProductSelectionModal
-            open={showProductModal}
-            onOpenChange={setShowProductModal}
-            onSelectMaterial={addMaterialToOrder}
-            materials={materials || []}
-          />
+        <EnhancedProductSelectionModal
+          open={showProductModal}
+          onOpenChange={setShowProductModal}
+          materials={filteredMaterials || []}
+          onSelectMaterial={addMaterialToOrder}
+        />
         </Dialog>
       </div>
 
