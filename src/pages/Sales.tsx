@@ -128,8 +128,14 @@ const Sales = () => {
     mutationFn: async (orderData: any) => {
       const totalAmount = orderItems.reduce((sum, item) => sum + item.line_total, 0);
       
-      // Remove fields that don't exist in sales_orders table
+      // Remove fields that don't exist in sales_orders table and handle empty UUIDs
       const { freight_charges, packing_charges, other_charges, gst_rate, ...cleanOrderData } = orderData;
+      
+      // Convert empty string UUIDs to null
+      if (cleanOrderData.quotation_id === "") {
+        cleanOrderData.quotation_id = null;
+      }
+      
       const orderWithTotal = { ...cleanOrderData, total_amount: totalAmount };
 
       if (editingOrder) {
