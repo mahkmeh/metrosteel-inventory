@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, Search, MoreHorizontal, Edit, Eye } from "lucide-react";
+import { CalendarIcon, Plus, Search, MoreHorizontal, Edit, Eye, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSalesOrderItems } from "@/hooks/useSalesOrderItems";
+import InlineBatchSelector from "@/components/InlineBatchSelector";
 
 interface SalesInvoice {
   id: string;
@@ -62,7 +64,12 @@ export default function SalesInvoice() {
     notes: "",
   });
 
+  const [batchAllocations, setBatchAllocations] = useState<Record<string, Array<{batch_id: string, allocated_quantity: number}>>>({});
+
   const queryClient = useQueryClient();
+
+  // Fetch sales order items when a sales order is selected
+  const { data: salesOrderItems } = useSalesOrderItems(formData.sales_order_id);
 
   const { data: invoices, isLoading } = useQuery({
     queryKey: ["sales-invoices", searchTerm, statusFilter],
@@ -199,10 +206,91 @@ export default function SalesInvoice() {
       status: "pending",
       notes: "",
     });
+    setBatchAllocations({});
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Update batch allocations when sales order items change
+  useEffect(() => {
+    if (salesOrderItems && salesOrderItems.length > 0) {
+      const initialAllocations: Record<string, Array<{batch_id: string, allocated_quantity: number}>> = {};
+      
+      salesOrderItems.forEach(item => {
+        if (item.allocations && item.allocations.length > 0) {
+          initialAllocations[item.id] = item.allocations.map(alloc => ({
+            batch_id: alloc.batch_id,
+            allocated_quantity: alloc.allocated_quantity_kg
+          }));
+        }
+      });
+      
+      setBatchAllocations(initialAllocations);
+      
+      // Calculate totals from sales order
+      const subtotal = salesOrderItems.reduce((sum, item) => sum + (item.line_total || 0), 0);
+      const tax = subtotal * 0.18; // Assuming 18% tax
+      const total = subtotal + tax;
+      
+      setFormData(prev => ({
+        ...prev,
+        subtotal_amount: subtotal,
+        tax_amount: tax,
+        total_amount: total
+      }));
+    }
+  }, [salesOrderItems]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate batch selections for pending items
+    if (salesOrderItems && salesOrderItems.length > 0) {
+      const pendingItems = salesOrderItems.filter(item => item.batch_selection_status === 'pending');
+      const unallocatedItems = pendingItems.filter(item => {
+        const allocations = batchAllocations[item.id] || [];
+        const totalAllocated = allocations.reduce((sum, alloc) => sum + alloc.allocated_quantity, 0);
+        return Math.abs(totalAllocated - item.quantity) > 0.001;
+      });
+
+      if (unallocatedItems.length > 0) {
+        toast.error(`Please complete batch selection for ${unallocatedItems.length} item(s) before creating invoice`);
+        return;
+      }
+
+      // Update batch allocations in database
+      for (const item of pendingItems) {
+        const allocations = batchAllocations[item.id] || [];
+        
+        // Delete existing allocations
+        await supabase
+          .from("sales_order_batch_allocations")
+          .delete()
+          .eq("sales_order_item_id", item.id);
+
+        // Insert new allocations
+        if (allocations.length > 0) {
+          const { error } = await supabase
+            .from("sales_order_batch_allocations")
+            .insert(
+              allocations.map(alloc => ({
+                sales_order_item_id: item.id,
+                batch_id: alloc.batch_id,
+                allocated_quantity_kg: alloc.allocated_quantity
+              }))
+            );
+
+          if (error) {
+            toast.error(`Error saving batch allocations: ${error.message}`);
+            return;
+          }
+        }
+
+        // Update item status to selected
+        await supabase
+          .from("sales_order_items")
+          .update({ batch_selection_status: 'selected' })
+          .eq("id", item.id);
+      }
+    }
     
     const submitData = {
       ...formData,
@@ -249,6 +337,37 @@ export default function SalesInvoice() {
   const filteredSalesOrders = salesOrders?.filter(order => 
     !formData.customer_id || order.customer_id === formData.customer_id
   );
+
+  const pendingItems = salesOrderItems?.filter(item => item.batch_selection_status === 'pending') || [];
+  const hasPendingBatchSelections = pendingItems.length > 0;
+
+  const handleBatchAllocationChange = (itemId: string, allocations: Array<{batch_id: string, allocated_quantity: number}>) => {
+    setBatchAllocations(prev => ({
+      ...prev,
+      [itemId]: allocations
+    }));
+  };
+
+  const getMaterialName = (materials: any): string => {
+    if (materials && typeof materials === 'object' && materials.name) {
+      return String(materials.name);
+    }
+    return 'Unknown Material';
+  };
+
+  const getMaterialSku = (materials: any): string => {
+    if (materials && typeof materials === 'object' && materials.sku) {
+      return String(materials.sku);
+    }
+    return 'N/A';
+  };
+
+  const getMaterialGrade = (materials: any): string => {
+    if (materials && typeof materials === 'object' && materials.grade) {
+      return String(materials.grade);
+    }
+    return 'N/A';
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -418,6 +537,68 @@ export default function SalesInvoice() {
                 </div>
               </div>
 
+              {/* Sales Order Items and Batch Selection */}
+              {salesOrderItems && salesOrderItems.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">Sales Order Items</Label>
+                    {hasPendingBatchSelections && (
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="text-sm">{pendingItems.length} item(s) require batch selection</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {salesOrderItems.map((item) => (
+                      <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{getMaterialName(item.materials)}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              SKU: {getMaterialSku(item.materials)} | Grade: {getMaterialGrade(item.materials)}
+                            </p>
+                            <p className="text-sm">
+                              Quantity: {item.quantity} kg | Unit Price: ₹{item.unit_price}
+                            </p>
+                          </div>
+                          <Badge 
+                            variant={item.batch_selection_status === 'selected' ? 'default' : 'secondary'}
+                          >
+                            {item.batch_selection_status === 'selected' ? 'Batches Selected' : 'Pending Selection'}
+                          </Badge>
+                        </div>
+                        
+                        {item.batch_selection_status === 'pending' && (
+                          <InlineBatchSelector
+                            materialId={item.material_id}
+                             materialName={getMaterialName(item.materials)}
+                            requiredQuantity={item.quantity}
+                            onAllocationChange={(allocations) => handleBatchAllocationChange(item.id, allocations)}
+                            initialAllocations={batchAllocations[item.id] || []}
+                          />
+                        )}
+
+                        {item.batch_selection_status === 'selected' && item.allocations && item.allocations.length > 0 && (
+                          <div className="bg-muted p-3 rounded">
+                            <h5 className="text-sm font-medium mb-2">Selected Batches:</h5>
+                            <div className="space-y-1">
+                              {item.allocations.map((alloc) => (
+                                <div key={alloc.id} className="flex justify-between text-sm">
+                                  <span>{alloc.batches?.batch_code} ({alloc.batches?.quality_grade})</span>
+                                  <span>{alloc.allocated_quantity_kg} kg</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
@@ -432,7 +613,10 @@ export default function SalesInvoice() {
                 <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                <Button 
+                  type="submit" 
+                  disabled={createMutation.isPending || updateMutation.isPending || hasPendingBatchSelections}
+                >
                   {editingInvoice ? "Update" : "Create"} Invoice
                 </Button>
               </div>
