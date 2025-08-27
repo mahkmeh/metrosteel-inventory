@@ -160,29 +160,53 @@ const Sales = () => {
           .insert(itemsWithOrderId);
         if (itemsError) throw itemsError;
       } else {
-        // Generate unique SO number if not provided or empty
-        if (!orderWithTotal.so_number || orderWithTotal.so_number.trim() === "") {
-          const { data: soNumber, error: soError } = await supabase.rpc('generate_so_number');
-          if (soError) throw soError;
-          orderWithTotal.so_number = soNumber;
-        }
+        // Always generate unique SO number for new orders
+        const { data: soNumber, error: soError } = await supabase.rpc('generate_so_number');
+        if (soError) throw soError;
+        orderWithTotal.so_number = soNumber;
 
-        const { data: newOrder, error } = await supabase
-          .from("sales_orders")
-          .insert([orderWithTotal])
-          .select()
-          .single();
-        if (error) throw error;
-
-        const itemsWithOrderId = orderItems.map(item => ({
-          ...item,
-          sales_order_id: newOrder.id
-        }));
+        // Retry mechanism for duplicate key errors
+        let retryCount = 0;
+        const maxRetries = 3;
         
-        const { error: itemsError } = await supabase
-          .from("sales_order_items")
-          .insert(itemsWithOrderId);
-        if (itemsError) throw itemsError;
+        while (retryCount < maxRetries) {
+          try {
+            const { data: newOrder, error } = await supabase
+              .from("sales_orders")
+              .insert([orderWithTotal])
+              .select()
+              .single();
+            
+            if (error) {
+              // If it's a duplicate key error, generate a new SO number and retry
+              if (error.code === '23505' && error.message.includes('so_number')) {
+                const { data: newSoNumber, error: newSoError } = await supabase.rpc('generate_so_number');
+                if (newSoError) throw newSoError;
+                orderWithTotal.so_number = newSoNumber;
+                retryCount++;
+                continue;
+              }
+              throw error;
+            }
+
+            const itemsWithOrderId = orderItems.map(item => ({
+              ...item,
+              sales_order_id: newOrder.id
+            }));
+            
+            const { error: itemsError } = await supabase
+              .from("sales_order_items")
+              .insert(itemsWithOrderId);
+            if (itemsError) throw itemsError;
+            
+            break; // Success, exit the retry loop
+          } catch (error) {
+            if (retryCount >= maxRetries - 1) {
+              throw error; // Re-throw if we've exhausted retries
+            }
+            retryCount++;
+          }
+        }
       }
     },
     onSuccess: () => {
@@ -193,10 +217,18 @@ const Sales = () => {
       });
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Sales order creation error:", error);
+      let errorMessage = `Failed to ${editingOrder ? "update" : "create"} order: ${error.message}`;
+      
+      // Provide user-friendly error messages for common issues
+      if (error.code === '23505' && error.message.includes('so_number')) {
+        errorMessage = "Unable to generate unique order number. Please try again.";
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to ${editingOrder ? "update" : "create"} order: ${error.message}`,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -410,8 +442,11 @@ const Sales = () => {
                       <Label htmlFor="so_number">Order Number *</Label>
                       <Input
                         id="so_number"
-                        value={formData.so_number}
+                        value={editingOrder ? formData.so_number : "Auto-generated"}
                         onChange={(e) => setFormData({ ...formData, so_number: e.target.value })}
+                        placeholder={editingOrder ? "Enter order number" : "Auto-generated"}
+                        readOnly={!editingOrder}
+                        className={!editingOrder ? "bg-muted" : ""}
                         required
                       />
                     </div>
