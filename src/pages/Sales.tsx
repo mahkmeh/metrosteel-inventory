@@ -127,7 +127,10 @@ const Sales = () => {
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
       const totalAmount = orderItems.reduce((sum, item) => sum + item.line_total, 0);
-      const orderWithTotal = { ...orderData, total_amount: totalAmount };
+      
+      // Remove fields that don't exist in sales_orders table
+      const { freight_charges, packing_charges, other_charges, gst_rate, ...cleanOrderData } = orderData;
+      const orderWithTotal = { ...cleanOrderData, total_amount: totalAmount };
 
       if (editingOrder) {
         const { error } = await supabase
