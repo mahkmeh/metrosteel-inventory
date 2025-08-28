@@ -314,6 +314,7 @@ const Sales = () => {
   };
 
   const handleBatchSelection = (materialId: string, materialName: string, requiredQuantity: number, itemIndex: number) => {
+    console.log("Opening batch selection for:", { materialId, materialName, requiredQuantity, itemIndex });
     setSelectedMaterialForBatch({ id: materialId, name: materialName });
     setSelectedOrderItemIndex(itemIndex);
     setShowBatchModal(true);

@@ -46,19 +46,34 @@ export function StreamlinedBatchSelection({
   const [allocations, setAllocations] = useState<BatchAllocation[]>([]);
   const { toast } = useToast();
 
+  console.log("StreamlinedBatchSelection props:", { open, materialId, materialName, requiredQuantity });
+
   // Fetch available batches
-  const { data: batches } = useQuery({
+  const { data: batches, isLoading, error } = useQuery({
     queryKey: ["material-batches", materialId],
     queryFn: async () => {
+      console.log("Fetching batches for materialId:", materialId);
       const { data, error } = await supabase
         .from("batches")
-        .select("id, batch_code, available_weight_kg, quality_grade, heat_number, make")
-        .eq("sku_id", materialId)
+        .select(`
+          id, 
+          batch_code, 
+          available_weight_kg, 
+          quality_grade, 
+          heat_number, 
+          make,
+          materials!inner(id, name)
+        `)
+        .eq("materials.id", materialId)
         .eq("status", "active")
         .gt("available_weight_kg", 0)
         .order("received_date", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Batch query error:", error);
+        throw error;
+      }
+      console.log("Fetched batches:", data);
       return data as BatchDetails[];
     },
     enabled: !!materialId && open,
