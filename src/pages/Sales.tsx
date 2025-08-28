@@ -11,12 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, X, Search, Clock, TrendingUp, AlertCircle, Truck, Bell, CheckCircle } from "lucide-react";
+import { Plus, Edit, ArrowUpDown, ChevronDown, ChevronRight, X, Search, Clock, TrendingUp, AlertCircle, Truck, Bell, CheckCircle, Package2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { OrderTimeline } from "@/components/OrderTimeline";
 import { StatusWorkflow } from "@/components/StatusWorkflow";
-import { EnhancedProductSelectionModal } from "@/components/EnhancedProductSelectionModal";
-import { BatchSelectionChoiceModal } from "@/components/BatchSelectionChoiceModal";
+import { StreamlinedProductSearch } from "@/components/StreamlinedProductSearch";
+import { StreamlinedBatchSelection } from "@/components/StreamlinedBatchSelection";
 import { KpiCard } from "@/components/KpiCard";
 import { useSalesKpis } from "@/hooks/useSalesKpis";
 
@@ -27,11 +27,9 @@ const Sales = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [orderItems, setOrderItems] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [showBatchChoiceModal, setShowBatchChoiceModal] = useState(false);
-  const [pendingMaterial, setPendingMaterial] = useState<any>(null);
-  const [pendingQuantity, setPendingQuantity] = useState(1);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [selectedMaterialForBatch, setSelectedMaterialForBatch] = useState<any>(null);
+  const [selectedOrderItemIndex, setSelectedOrderItemIndex] = useState<number>(-1);
   const [formData, setFormData] = useState({
     so_number: "",
     customer_id: "",
@@ -123,10 +121,7 @@ const Sales = () => {
     },
   });
 
-  const filteredMaterials = materials?.filter(material =>
-    material.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    material.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Remove filtered materials - now handled by StreamlinedProductSearch
 
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
@@ -219,10 +214,10 @@ const Sales = () => {
               if (item.batchSelections && item.batchSelections.length > 0 && insertItemsData) {
                 const salesOrderItemId = insertItemsData[index].id;
                 
-                const batchAllocations = item.batchSelections.map((batch: any) => ({
+                const batchAllocations = item.batchSelections.map((allocation: any) => ({
                   sales_order_item_id: salesOrderItemId,
-                  batch_id: batch.batch.id,
-                  allocated_quantity_kg: batch.selectedWeight
+                  batch_id: allocation.batchId,
+                  allocated_quantity_kg: allocation.allocatedQuantity
                 }));
 
                 const { error: batchError } = await supabase
@@ -284,12 +279,11 @@ const Sales = () => {
       other_charges: "0",
     });
     setOrderItems([]);
-    setSearchQuery("");
     setEditingOrder(null);
     setIsDialogOpen(false);
   };
 
-  const addMaterialToOrder = (material: any, orderQuantity: number = 1, batchSelections: any[] = []) => {
+  const addMaterialToOrder = (material: any) => {
     const existingItem = orderItems.find(item => item.material_id === material.id);
     if (existingItem) {
       toast({
@@ -302,22 +296,47 @@ const Sales = () => {
 
     const newItem = {
       material_id: material.id,
-      material_name: material.name, // For display only
-      material_sku: material.sku,   // For display only
-      quantity: orderQuantity,
+      material_name: material.name,
+      material_sku: material.sku,
+      quantity: 1,
       unit_price: material.base_price || 0,
-      line_total: (material.base_price || 0) * orderQuantity,
+      line_total: material.base_price || 0,
       notes: "",
-      batchSelections: batchSelections, // Store batch selections temporarily
-      batch_selection_status: batchSelections.length > 0 ? 'selected' : 'pending'
+      batchSelections: [],
+      batch_selection_status: 'pending'
     };
 
     setOrderItems([...orderItems, newItem]);
-    setSearchQuery("");
     toast({
       title: "Material Added",
-      description: `${material.name} added to order${batchSelections.length > 0 ? ` with ${batchSelections.length} batch(es)` : ' - batch selection pending'}`,
+      description: `${material.name} added to order`,
     });
+  };
+
+  const handleBatchSelection = (materialId: string, materialName: string, requiredQuantity: number, itemIndex: number) => {
+    setSelectedMaterialForBatch({ id: materialId, name: materialName });
+    setSelectedOrderItemIndex(itemIndex);
+    setShowBatchModal(true);
+  };
+
+  const handleBatchComplete = (allocations: any[]) => {
+    if (selectedOrderItemIndex >= 0) {
+      const updatedItems = [...orderItems];
+      updatedItems[selectedOrderItemIndex] = {
+        ...updatedItems[selectedOrderItemIndex],
+        batchSelections: allocations,
+        batch_selection_status: 'selected'
+      };
+      setOrderItems(updatedItems);
+      
+      toast({
+        title: "Batch Selection Complete",
+        description: `${allocations.length} batch(es) allocated for ${selectedMaterialForBatch?.name}`,
+      });
+    }
+    setShowBatchModal(false);
+    setSelectedMaterialForBatch(null);
+    setSelectedOrderItemIndex(-1);
   };
 
   const updateOrderItem = (index: number, field: string, value: any) => {
@@ -585,75 +604,98 @@ const Sales = () => {
                   <CardTitle className="text-lg">Order Items</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Add Items Section */}
+                  {/* Streamlined Product Search */}
                   <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Input
-                          placeholder="Search materials by name or SKU..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full"
-                        />
-                      </div>
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={() => setShowProductModal(true)}
-                      >
-                        <Search className="h-4 w-4 mr-2" />
-                        Browse
-                      </Button>
-                    </div>
-
-                    {/* Search Results */}
-                    {searchQuery && filteredMaterials && filteredMaterials.length > 0 && (
-                      <div className="border rounded-lg max-h-48 overflow-y-auto">
-                        {filteredMaterials.slice(0, 5).map((material) => {
-                          const stockInfo = getStockInfo(material);
-                          return (
-                            <div
-                              key={material.id}
-                              className="p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0 transition-colors"
-                              onClick={() => {
-                                setPendingMaterial(material);
-                                setPendingQuantity(1);
-                                setShowBatchChoiceModal(true);
-                              }}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="font-medium">{material.name}</div>
-                                  <div className="text-sm text-muted-foreground">
-                                    SKU: {material.sku} • {material.unit}
-                                  </div>
-                                </div>
-                                <div className="text-right space-y-1">
-                                  <div className="font-medium">₹{material.base_price || 0}</div>
-                                  <Badge className={stockInfo.color}>
-                                    {stockInfo.text}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <StreamlinedProductSearch
+                      materials={materials || []}
+                      onSelectMaterial={addMaterialToOrder}
+                      placeholder="Search and add items to order..."
+                    />
                   </div>
 
-                  {/* Order Items List */}
+                  {/* Order Items Table */}
                   {orderItems.length > 0 && (
-                    <div className="space-y-3">
-                      {orderItems.map((item, index) => (
-                        <Card key={index} className="border-l-4 border-l-primary">
-                          <CardContent className="p-4">
-                            <div className="space-y-4">
-                              <div className="flex justify-between items-start">
+                    <div className="space-y-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Item Details</TableHead>
+                            <TableHead className="w-24">Qty</TableHead>
+                            <TableHead className="w-24">Rate</TableHead>
+                            <TableHead className="w-28">Amount</TableHead>
+                            <TableHead className="w-32">Batch Status</TableHead>
+                            <TableHead className="w-20"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {orderItems.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
                                 <div>
                                   <div className="font-medium">{item.material_name}</div>
-                                  <div className="text-sm text-muted-foreground">SKU: {item.material_sku}</div>
+                                  <div className="text-sm text-muted-foreground">{item.material_sku}</div>
+                                  <Input
+                                    value={item.notes}
+                                    onChange={(e) => updateOrderItem(index, "notes", e.target.value)}
+                                    placeholder="Description/Notes"
+                                    className="mt-1 text-xs"
+                                  />
                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min="0.01"
+                                  step="0.01"
+                                  value={item.quantity}
+                                  onChange={(e) => updateOrderItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                                  className="text-center"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.unit_price}
+                                  onChange={(e) => updateOrderItem(index, "unit_price", parseFloat(e.target.value) || 0)}
+                                  className="text-center"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-center font-medium">
+                                  ₹{item.line_total.toFixed(2)}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Badge 
+                                    variant={item.batch_selection_status === 'selected' ? 'default' : 'secondary'}
+                                    className="flex items-center gap-1"
+                                  >
+                                    {item.batch_selection_status === 'selected' ? (
+                                      <CheckCircle className="h-3 w-3" />
+                                    ) : (
+                                      <Package2 className="h-3 w-3" />
+                                    )}
+                                    {item.batch_selection_status === 'selected' ? 'Selected' : 'Pending'}
+                                  </Badge>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleBatchSelection(
+                                      item.material_id, 
+                                      item.material_name, 
+                                      item.quantity, 
+                                      index
+                                    )}
+                                  >
+                                    {item.batch_selection_status === 'selected' ? 'Edit' : 'Select'}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -663,51 +705,11 @@ const Sales = () => {
                                 >
                                   <X className="h-4 w-4" />
                                 </Button>
-                              </div>
-
-                              <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                  <Label>Quantity</Label>
-                                  <Input
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    value={item.quantity}
-                                    onChange={(e) => updateOrderItem(index, "quantity", parseFloat(e.target.value) || 0)}
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Unit Price</Label>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={item.unit_price}
-                                    onChange={(e) => updateOrderItem(index, "unit_price", parseFloat(e.target.value) || 0)}
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Line Total</Label>
-                                  <Input
-                                    value={`₹${item.line_total.toFixed(2)}`}
-                                    disabled
-                                    className="bg-muted"
-                                  />
-                                </div>
-                              </div>
-
-                              <div>
-                                <Label>Notes</Label>
-                                <Input
-                                  value={item.notes}
-                                  onChange={(e) => updateOrderItem(index, "notes", e.target.value)}
-                                  placeholder="Optional notes for this item"
-                                />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
 
                       {/* Summary Section */}
                       <div className="pt-4 border-t space-y-3">
@@ -809,42 +811,13 @@ const Sales = () => {
             </form>
           </DialogContent>
 
-        <EnhancedProductSelectionModal
-          open={showProductModal}
-          onOpenChange={setShowProductModal}
-          materials={filteredMaterials || []}
-          onSelectMaterial={addMaterialToOrder}
-        />
-
-        <BatchSelectionChoiceModal
-          isOpen={showBatchChoiceModal}
-          onClose={() => setShowBatchChoiceModal(false)}
-          onSelectNow={() => {
-            setShowBatchChoiceModal(false);
-            setShowProductModal(true);
-          }}
-          onSelectLater={() => {
-            const newItem = {
-              material_id: pendingMaterial.id,
-              material_name: pendingMaterial.name,
-              material_sku: pendingMaterial.sku,
-              quantity: pendingQuantity,
-              unit_price: pendingMaterial.base_price || 0,
-              line_total: (pendingMaterial.base_price || 0) * pendingQuantity,
-              notes: "",
-              batch_selection_status: 'pending',
-              batchSelections: []
-            };
-            setOrderItems([...orderItems, newItem]);
-            setShowBatchChoiceModal(false);
-            setPendingMaterial(null);
-            toast({
-              title: "Material Added",
-              description: `${pendingMaterial.name} added - batch selection pending`,
-            });
-          }}
-          materialName={pendingMaterial?.name || ""}
-          quantity={pendingQuantity}
+        <StreamlinedBatchSelection
+          open={showBatchModal}
+          onOpenChange={setShowBatchModal}
+          materialId={selectedMaterialForBatch?.id || ""}
+          materialName={selectedMaterialForBatch?.name || ""}
+          requiredQuantity={selectedOrderItemIndex >= 0 ? orderItems[selectedOrderItemIndex]?.quantity || 0 : 0}
+          onComplete={handleBatchComplete}
         />
         </Dialog>
       </div>
