@@ -1761,14 +1761,8 @@ export type Database = {
       }
     }
     Functions: {
-      generate_batch_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_po_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_batch_code: { Args: never; Returns: string }
+      generate_po_number: { Args: never; Returns: string }
       generate_sku: {
         Args: {
           p_category: string
@@ -1778,10 +1772,7 @@ export type Database = {
         }
         Returns: string
       }
-      generate_so_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_so_number: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
