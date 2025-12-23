@@ -30,8 +30,9 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
         return [];
       }
 
-      // Get inventory data for all materials
       const materialIds = materialsData.map(m => m.id);
+
+      // Get inventory data for all materials
       const { data: inventoryData, error: inventoryError } = await supabase
         .from("inventory")
         .select(`
@@ -57,6 +58,30 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
 
       console.log("Inventory data fetched:", inventoryData?.length);
 
+      // Get batch data for all materials (stock from batches table)
+      const { data: batchesData, error: batchesError } = await supabase
+        .from("batches")
+        .select(`
+          id,
+          sku_id,
+          batch_code,
+          available_weight_kg,
+          total_weight_kg,
+          reserved_weight_kg,
+          quality_grade,
+          status
+        `)
+        .in("sku_id", materialIds)
+        .eq("status", "active");
+
+      if (batchesError) {
+        console.error("Batches query error:", batchesError);
+        // Don't throw, continue without batch data
+        console.warn("Continuing without batch data");
+      }
+
+      console.log("Batches data fetched:", batchesData?.length || 0);
+
       // Get pending purchase order quantities
       const { data: pendingOrders, error: ordersError } = await supabase
         .from("purchase_order_items")
@@ -72,7 +97,6 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
 
       if (ordersError) {
         console.error("Purchase orders query error:", ordersError);
-        // Don't throw error for pending orders, just log and continue
         console.warn("Continuing without pending orders data");
       }
 
@@ -83,10 +107,20 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
         // Get inventory for this material
         const materialInventory = inventoryData?.filter(inv => inv.material_id === material.id) || [];
 
-        // Calculate current stock across all locations
-        const currentStock = materialInventory.reduce((total, inv) => {
+        // Calculate stock from inventory table
+        const inventoryStock = materialInventory.reduce((total, inv) => {
           return total + (inv.available_quantity || inv.quantity - (inv.reserved_quantity || 0));
         }, 0);
+
+        // Calculate stock from batches table
+        const materialBatches = batchesData?.filter(b => b.sku_id === material.id) || [];
+        const batchStock = materialBatches.reduce((total, batch) => {
+          return total + (batch.available_weight_kg || 0);
+        }, 0);
+
+        // Use the higher value between inventory and batch stock
+        // This handles cases where stock is tracked in batches but not in inventory
+        const currentStock = Math.max(inventoryStock, batchStock);
 
         // Calculate total inventory value and weighted average cost
         const totalInventoryValue = materialInventory.reduce((total, inv) => {
@@ -114,7 +148,7 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
         if (currentStock === 0) {
           stockStatus = "critical";
           statusColor = "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
-        } else if (currentStock < 100) { // Define threshold later as configurable
+        } else if (currentStock < 100) {
           stockStatus = "low";
           statusColor = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400";
         }
@@ -127,6 +161,9 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
           available: inv.available_quantity || (inv.quantity - (inv.reserved_quantity || 0))
         }));
 
+        // Get batch count for this material
+        const batchCount = materialBatches.length;
+
         return {
           ...material,
           currentStock,
@@ -137,8 +174,10 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
           totalInventoryValue,
           weightedAvgCost,
           totalQuantity,
+          batchCount,
           // Keep inventory details for drill-down
           inventoryDetails: materialInventory,
+          batchDetails: materialBatches,
           locations
         };
       });
@@ -170,6 +209,6 @@ export const useMaterialsWithStock = (searchTerm?: string, sortField = "created_
 
       return materialsWithStock;
     },
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
   });
 };
