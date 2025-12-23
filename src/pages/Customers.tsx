@@ -22,8 +22,12 @@ const Customers = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
-    contact_person: "",
+    md_name: "",
+    md_mobile: "",
+    purchaser_name: "",
+    purchaser_mobile: "",
+    accountant_name: "",
+    accountant_mobile: "",
     address: "",
     gst_number: "",
     credit_limit: "",
@@ -82,8 +86,12 @@ const Customers = () => {
     setFormData({
       name: "",
       email: "",
-      phone: "",
-      contact_person: "",
+      md_name: "",
+      md_mobile: "",
+      purchaser_name: "",
+      purchaser_mobile: "",
+      accountant_name: "",
+      accountant_mobile: "",
       address: "",
       gst_number: "",
       credit_limit: "",
@@ -107,8 +115,12 @@ const Customers = () => {
     setFormData({
       name: customer.name || "",
       email: customer.email || "",
-      phone: customer.phone || "",
-      contact_person: customer.contact_person || "",
+      md_name: customer.md_name || "",
+      md_mobile: customer.md_mobile || "",
+      purchaser_name: customer.purchaser_name || "",
+      purchaser_mobile: customer.purchaser_mobile || "",
+      accountant_name: customer.accountant_name || "",
+      accountant_mobile: customer.accountant_mobile || "",
       address: customer.address || "",
       gst_number: customer.gst_number || "",
       credit_limit: customer.credit_limit?.toString() || "",
@@ -152,7 +164,7 @@ const Customers = () => {
               Add Customer
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
               <DialogDescription>
@@ -172,17 +184,6 @@ const Customers = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="contact_person">Contact Person</Label>
-                  <Input
-                    id="contact_person"
-                    value={formData.contact_person}
-                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                    className="h-12"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
@@ -192,16 +193,74 @@ const Customers = () => {
                     className="h-12"
                   />
                 </div>
+              </div>
+
+              {/* MD Contact */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="md_name">MD Name</Label>
                   <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    id="md_name"
+                    value={formData.md_name}
+                    onChange={(e) => setFormData({ ...formData, md_name: e.target.value })}
+                    className="h-12"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="md_mobile">MD Mobile</Label>
+                  <Input
+                    id="md_mobile"
+                    value={formData.md_mobile}
+                    onChange={(e) => setFormData({ ...formData, md_mobile: e.target.value })}
                     className="h-12"
                   />
                 </div>
               </div>
+
+              {/* Purchaser Contact */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="purchaser_name">Purchaser Name</Label>
+                  <Input
+                    id="purchaser_name"
+                    value={formData.purchaser_name}
+                    onChange={(e) => setFormData({ ...formData, purchaser_name: e.target.value })}
+                    className="h-12"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="purchaser_mobile">Purchaser Mobile</Label>
+                  <Input
+                    id="purchaser_mobile"
+                    value={formData.purchaser_mobile}
+                    onChange={(e) => setFormData({ ...formData, purchaser_mobile: e.target.value })}
+                    className="h-12"
+                  />
+                </div>
+              </div>
+
+              {/* Accountant Contact */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="accountant_name">Accountant Name</Label>
+                  <Input
+                    id="accountant_name"
+                    value={formData.accountant_name}
+                    onChange={(e) => setFormData({ ...formData, accountant_name: e.target.value })}
+                    className="h-12"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="accountant_mobile">Accountant Mobile</Label>
+                  <Input
+                    id="accountant_mobile"
+                    value={formData.accountant_mobile}
+                    onChange={(e) => setFormData({ ...formData, accountant_mobile: e.target.value })}
+                    className="h-12"
+                  />
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="address">Address</Label>
                 <Textarea

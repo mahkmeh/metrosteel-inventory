@@ -251,6 +251,8 @@ export type Database = {
       }
       customers: {
         Row: {
+          accountant_mobile: string | null
+          accountant_name: string | null
           address: string | null
           contact_person: string | null
           created_at: string
@@ -260,11 +262,17 @@ export type Database = {
           gst_number: string | null
           id: string
           is_active: boolean
+          md_mobile: string | null
+          md_name: string | null
           name: string
           phone: string | null
+          purchaser_mobile: string | null
+          purchaser_name: string | null
           updated_at: string
         }
         Insert: {
+          accountant_mobile?: string | null
+          accountant_name?: string | null
           address?: string | null
           contact_person?: string | null
           created_at?: string
@@ -274,11 +282,17 @@ export type Database = {
           gst_number?: string | null
           id?: string
           is_active?: boolean
+          md_mobile?: string | null
+          md_name?: string | null
           name: string
           phone?: string | null
+          purchaser_mobile?: string | null
+          purchaser_name?: string | null
           updated_at?: string
         }
         Update: {
+          accountant_mobile?: string | null
+          accountant_name?: string | null
           address?: string | null
           contact_person?: string | null
           created_at?: string
@@ -288,8 +302,12 @@ export type Database = {
           gst_number?: string | null
           id?: string
           is_active?: boolean
+          md_mobile?: string | null
+          md_name?: string | null
           name?: string
           phone?: string | null
+          purchaser_mobile?: string | null
+          purchaser_name?: string | null
           updated_at?: string
         }
         Relationships: []
