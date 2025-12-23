@@ -17,6 +17,7 @@ import { CategoryStep } from "@/components/MaterialForm/steps/CategoryStep";
 import { SubTypeStep } from "@/components/MaterialForm/steps/SubTypeStep";
 import { StreamlinedMaterialForm } from "@/components/MaterialForm/steps/StreamlinedMaterialForm";
 import { BatchManagementModal } from "@/components/BatchManagementModal";
+import { BatchDrilldownModal } from "@/components/BatchDrilldownModal";
 import { useCreateBatch } from "@/hooks/useBatches";
 import { MaterialTemplateForm } from "@/components/MaterialForm/MaterialTemplateForm";
 import { MobileFormSheet } from "@/components/MaterialForm/MobileFormSheet";
@@ -31,6 +32,8 @@ const Materials = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [batchManagementOpen, setBatchManagementOpen] = useState(false);
   const [selectedMaterialForBatch, setSelectedMaterialForBatch] = useState<any>(null);
+  const [batchDrilldownOpen, setBatchDrilldownOpen] = useState(false);
+  const [selectedMaterialForDrilldown, setSelectedMaterialForDrilldown] = useState<any>(null);
 
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -706,7 +709,14 @@ const Materials = () => {
                     </TableCell>
                     <TableCell>{material.finish || "—"}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <button
+                        className="flex items-center gap-2 hover:bg-muted/50 rounded-md px-2 py-1 -mx-2 -my-1 transition-colors cursor-pointer text-left"
+                        onClick={() => {
+                          setSelectedMaterialForDrilldown(material);
+                          setBatchDrilldownOpen(true);
+                        }}
+                        title="Click to view batch details"
+                      >
                         <span className="font-medium">{material.currentStock || 0}</span>
                         <span className="text-xs text-muted-foreground">{material.unit}</span>
                         <Badge 
@@ -716,7 +726,7 @@ const Materials = () => {
                           {material.stockStatus === 'critical' ? 'Critical' : 
                            material.stockStatus === 'low' ? 'Low' : 'Good'}
                         </Badge>
-                      </div>
+                      </button>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -802,6 +812,16 @@ const Materials = () => {
           setSelectedMaterialForBatch(null);
         }}
         material={selectedMaterialForBatch}
+      />
+
+      {/* Batch Drilldown Modal */}
+      <BatchDrilldownModal
+        isOpen={batchDrilldownOpen}
+        onClose={() => {
+          setBatchDrilldownOpen(false);
+          setSelectedMaterialForDrilldown(null);
+        }}
+        material={selectedMaterialForDrilldown}
       />
     </div>
   );
